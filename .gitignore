@@ -1,0 +1,13 @@
+# Binary file yang dihasilkan Go
+/ParkServerV2
+*.exe
+*.out
+
+# Environment variable (RAHASIA!)
+.env
+
+# Database lokal (SQLite)
+*.db
+
+# Folder vendor (tidak perlu diupload karena ada go.mod)
+vendor/

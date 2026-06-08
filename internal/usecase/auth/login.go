@@ -1,0 +1,109 @@
+package auth
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"time"
+
+	"modulegue/internal/domain/auth"
+	"modulegue/internal/domain/user"
+	"modulegue/pkg/hash"
+	"modulegue/pkg/jwt"
+)
+
+var (
+	ErrInvalidCredentials = errors.New("email atau password salah")
+	ErrUserNotFound       = errors.New("user tidak ditemukan")
+)
+
+type LoginRequest struct {
+	Email    string
+	Password string
+}
+
+type LoginResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	ExpiresAt    int64  `json:"expires_at"`
+}
+
+type LoginUseCase struct {
+	userRepo   user.Repository
+	authRepo   auth.Repository
+	jwtSecret  string
+	accessTTL  time.Duration
+	refreshTTL time.Duration
+}
+
+func NewLoginUseCase(
+	userRepo user.Repository,
+	authRepo auth.Repository,
+	jwtSecret string,
+	accessTTL time.Duration,
+	refreshTTL time.Duration,
+) *LoginUseCase {
+	return &LoginUseCase{
+		userRepo:   userRepo,
+		authRepo:   authRepo,
+		jwtSecret:  jwtSecret,
+		accessTTL:  accessTTL,
+		refreshTTL: refreshTTL,
+	}
+}
+
+func (uc *LoginUseCase) Execute(ctx context.Context, req LoginRequest) (LoginResponse, error) {
+	// 1. Cari user berdasarkan email
+	u, err := uc.userRepo.FindByEmail(ctx, req.Email)
+	if err != nil {
+		return LoginResponse{}, ErrInvalidCredentials
+	}
+
+	// 2. Verifikasi password
+	if err := hash.Compare(u.Password, req.Password); err != nil {
+		return LoginResponse{}, ErrInvalidCredentials
+	}
+
+	now := time.Now()
+	accessExp := now.Add(uc.accessTTL)
+
+	// 3. Buat access token
+	accessToken, err := jwt.SignHS256(jwt.Claims{
+		Subject:    fmt.Sprintf("%d", u.ID),
+		UserID:     u.ID,
+		Expiration: accessExp.Unix(),
+		IssuedAt:   now.Unix(),
+		Type:       "access",
+	}, uc.jwtSecret)
+	if err != nil {
+		return LoginResponse{}, fmt.Errorf("generate access token: %w", err)
+	}
+
+	// 4. Buat refresh token (TTL lebih panjang, tanpa expiry di payload — dicek dari DB)
+	refreshExp := now.Add(uc.refreshTTL)
+	refreshToken, err := jwt.SignHS256(jwt.Claims{
+		Subject:    fmt.Sprintf("%d", u.ID),
+		UserID:     u.ID,
+		Expiration: refreshExp.Unix(),
+		IssuedAt:   now.Unix(),
+		Type:       "refresh",
+	}, uc.jwtSecret)
+	if err != nil {
+		return LoginResponse{}, fmt.Errorf("generate refresh token: %w", err)
+	}
+
+	// 5. Simpan session ke DB
+	if err := uc.authRepo.SaveSession(ctx, auth.Session{
+		UserID:       u.ID,
+		RefreshToken: refreshToken,
+		ExpiresAt:    refreshExp,
+	}); err != nil {
+		return LoginResponse{}, fmt.Errorf("save session: %w", err)
+	}
+
+	return LoginResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		ExpiresAt:    accessExp.Unix(),
+	}, nil
+}

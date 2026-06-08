@@ -1,0 +1,10 @@
+cmd/entry point
+internal/tidak bisa diimport dari luar
+domain/entity & interface
+usecase/business rules
+repository/implementasi DB
+handler/HTTP layer
+dto/request & response struct
+pkg/reusable, tanpa business logic
+shared/dipakai semua klien
+ws/baru ← WebSocket (web & desktop)
