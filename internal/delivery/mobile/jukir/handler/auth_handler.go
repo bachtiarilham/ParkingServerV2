@@ -1,12 +1,12 @@
 package handler
 
 import (
-	"encoding/json"
+	// "encoding/json"
 	"net/http"
 
-	"modulegue/internal/delivery/mobile/jukir/dto"
+	// "modulegue/internal/delivery/mobile/jukir/dto"
 	authuc "modulegue/internal/usecase/auth"
-	"modulegue/pkg/response"
+	// "modulegue/pkg/response"
 )
 
 type AuthHandler struct {
@@ -25,48 +25,48 @@ func NewAuthHandler(
 }
 
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
-	var req dto.RegisterRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.Error(w, http.StatusBadRequest, "request tidak valid")
-		return
-	}
+	// var req dto.RegisterRequest
+	// if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	// 	response.Error(w, http.StatusBadRequest, "request tidak valid")
+	// 	return
+	// }
 
-	err := h.registerUC.Execute(r.Context(), dto.RegisterRequest{
-		FullName: req.FullName,
-		Nik:      req.Nik,
-		Email:    req.Email,
-		Phone:    req.Phone,
-		Username: req.Username,
-		Password: req.Password,
-	})
-	if err != nil {
-		response.Error(w, http.StatusBadRequest, err.Error())
-		return
-	}
+	// err := h.registerUC.Execute(r.Context(), dto.RegisterRequest{
+	// 	FullName: req.FullName,
+	// 	Nik:      req.Nik,
+	// 	Email:    req.Email,
+	// 	Phone:    req.Phone,
+	// 	Username: req.Username,
+	// 	Password: req.Password,
+	// })
+	// if err != nil {
+	// 	response.Error(w, http.StatusBadRequest, err.Error())
+	// 	return
+	// }
 
-	response.Success(w, http.StatusCreated, "registrasi berhasil", nil)
+	// response.Success(w, http.StatusCreated, "registrasi berhasil", nil)
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var req dto.LoginRequest
+	// var req dto.LoginRequest
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.Error(w, http.StatusBadRequest, "request tidak valid")
-		return
-	}
+	// if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	// 	response.Error(w, http.StatusBadRequest, "request tidak valid")
+	// 	return
+	// }
 
-	result, err := h.loginUC.Execute(r.Context(), dto.LoginRequest{
-		Identity: req.Identity,
-		Password: req.Password,
-	})
-	if err != nil {
-		response.Error(w, http.StatusUnauthorized, err.Error())
-		return
-	}
+	// result, err := h.loginUC.Execute(r.Context(), dto.LoginRequest{
+	// 	Identity: req.Identity,
+	// 	Password: req.Password,
+	// })
+	// if err != nil {
+	// 	response.Error(w, http.StatusUnauthorized, err.Error())
+	// 	return
+	// }
 
-	response.Success(w, http.StatusOK, "login berhasil", dto.LoginResponse{
-		AccessToken:  result.AccessToken,
-		RefreshToken: result.RefreshToken,
-		ExpiresAt:    result.ExpiresAt,
-	})
+	// response.Success(w, http.StatusOK, "login berhasil", dto.LoginResponse{
+	// 	AccessToken:  result.AccessToken,
+	// 	RefreshToken: result.RefreshToken,
+	// 	ExpiresAt:    result.ExpiresAt,
+	// })
 }
