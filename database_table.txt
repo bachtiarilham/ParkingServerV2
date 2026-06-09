@@ -1,0 +1,149 @@
+Penjelasan Tabel-Tabel dalam parkir_v2.sql untuk Audit Ready Database
+🔹 Kategori 1: User Management & Roles (Manajemen Pengguna & Peran)
+1. system_role
+Fungsi: Mendefinisikan jenis peran pengguna (misal: admin, officer, supervisor, customer).
+Untuk Audit: Menentukan level akses dan otorisasi. Siapa yang bisa melakukan apa.
+Audit Trail: Tidak ada history → tidak siap audit jika peran bisa berubah.
+2. system_user
+Fungsi: Data dasar pengguna (pegawai/officer/customer), termasuk nama, email, username, status kerja.
+Untuk Audit: Siapa yang melakukan tindakan (misalnya: login, buka sesi parkir, void transaksi).
+Audit Trail: Tidak ada history perubahan data → tidak siap audit. Jika nama/email diubah, jejak hilang.
+Kolom penting:
+employment_status: aktif/tidak → penting untuk akses kontrol.
+registered_at, updated_at: kapan dibuat/diubah.
+3. user_region_scope
+Fungsi: Menentukan wilayah (provinsi/kota/area/zona) yang bisa diakses oleh pengguna (biasanya supervisor/admin).
+Untuk Audit: Membatasi scope akses pengguna berdasarkan wilayah.
+Audit Trail: Tidak ada history → tidak siap audit.
+🔹 Kategori 2: Master Data (Konfigurasi Dasar Sistem)
+4. parking_zone
+Fungsi: Zona geografis tempat parkir (misal: Zona A, Zona B).
+Untuk Audit: Referensi lokasi parkir, digunakan oleh parking_location.
+Audit Trail: Tidak punya created_by_user_id → tidak siap audit.
+5. parking_area
+Fungsi: Area dalam suatu zona (misal: Area 1, Area 2).
+Untuk Audit: Referensi lebih spesifik dari parking_zone.
+Audit Trail: Tidak punya created_by_user_id → tidak siap audit.
+6. parking_location
+Fungsi: Lokasi parkir spesifik (misal: Jalan ABC No. 123).
+Untuk Audit: Tempat transaksi, sesi parkir, dan visit event terjadi.
+Audit Trail: Punya updated_at tapi tidak punya created_by_user_id → tidak siap audit.
+7. vehicle_type
+Fungsi: Jenis kendaraan (motor, mobil, truck).
+Untuk Audit: Digunakan untuk menentukan tarif parkir.
+Audit Trail: Tidak punya created_by_user_id → tidak siap audit.
+8. payment_method
+Fungsi: Metode pembayaran (cash, e-wallet, bank transfer).
+Untuk Audit: Menentukan bagaimana pembayaran dilakukan.
+Audit Trail: Tidak punya created_by_user_id → tidak siap audit.
+9. parking_shift_template
+Fungsi: Template jam shift untuk officer (misal: shift pagi 08:00-16:00).
+Untuk Audit: Menentukan kapan officer bertugas.
+Audit Trail: Punya created_at tapi tidak punya created_by_user_id → tidak siap audit.
+🔹 Kategori 3: Konfigurasi & Aturan (Settings & Rules)
+10. admin_alert_rule
+Fungsi: Aturan untuk memicu alert (misal: jumlah transaksi melebihi X).
+Untuk Audit: Siapa yang membuat aturan ini?
+Audit Trail: Sudah punya created_by_user_id → sudah siap audit.
+11. admin_location_setting
+Fungsi: Setting per lokasi (misal: tarif motor, tarif mobil).
+Untuk Audit: Siapa yang mengubah setting ini?
+Audit Trail: Punya updated_by_user_id, tapi tidak punya created_by_user_id → tidak siap audit.
+12. admin_settings_* (alert_rule, notification, payment_method, shift_template)
+Fungsi: Tabel konfigurasi UI (bukan core business).
+Untuk Audit: Siapa yang mengubah setting ini?
+Audit Trail: Punya updated_by_user_id, tidak punya created_by_user_id → tidak siap audit.
+🔹 Kategori 4: Operasional (Sesi, Kunjungan, Tugas Officer)
+13. parking_session
+Fungsi: Sesi parkir aktif (kendaraan masuk, durasi).
+Untuk Audit: Siapa yang mencatat, siapa officer yang handle, berapa lama parkir.
+Audit Trail: Punya started_at, ended_at, tapi perubahan status tidak dicatat secara historis.
+History: Ada parking_session_history → sudah siap audit.
+14. onstreet_visit_event
+Fungsi: Kunjungan officer ke kendaraan di lokasi (misal: memberi tilang).
+Untuk Audit: Siapa officer, kapan, kendaraan siapa, apa yang dilakukan.
+Audit Trail: Punya created_by_user_id, observed_at, dll.
+History: Ada onstreet_visit_history → sudah siap audit.
+15. officer_assignment_current
+Fungsi: Penugasan officer saat ini ke lokasi/area.
+Untuk Audit: Siapa yang menugaskan, kapan mulai, ke mana.
+Audit Trail: Punya assigned_by_user_id, updated_at.
+History: Ada officer_assignment_history → sudah siap audit.
+16. officer_status_history
+Fungsi: Log perubahan status officer (off duty → on duty).
+Untuk Audit: Siapa yang merubah, kapan, kenapa.
+Audit Trail: Sudah lengkap → sudah siap audit.
+🔹 Kategori 5: Finansial (Transaksi, Pembayaran, Penyesuaian)
+17. financial_parking_transaction
+Fungsi: Transaksi parkir (bayar parkir).
+Untuk Audit: Siapa bayar, berapa, kapan, metode apa, siapa officer.
+Audit Trail: Punya created_by_user_id, voided_by_user_id, paid_at, dll.
+History: Ada financial_parking_transaction_history → sudah siap audit.
+18. financial_payment_event
+Fungsi: Event pembayaran (via gateway).
+Untuk Audit: Siapa yang bayar, gateway apa, status, settlement.
+Audit Trail: Punya settled_by_user_id.
+History: Ada financial_payment_event_history → sudah siap audit.
+19. financial_adjustment_entry
+Fungsi: Entri penyesuaian finansial (misal: refund manual, chargeback).
+Untuk Audit: Siapa yang buat, kenapa, berapa besar.
+Audit Trail: Punya created_by_user_id → sudah siap audit.
+20. financial_dispute_case
+Fungsi: Kasus sengketa pembayaran.
+Untuk Audit: Siapa yang buka, siapa yang assign, siapa yang resolve.
+Audit Trail: Punya opened_by_user_id, assigned_to_user_id.
+History: Ada financial_dispute_history → sudah siap audit.
+21. financial_refund_transaction
+Fungsi: Proses refund ke customer/wallet.
+Untuk Audit: Siapa yang minta, siapa yang approve, kenapa.
+Audit Trail: Punya requested_by_user_id, approved_by_user_id.
+History: Ada financial_refund_history → sudah siap audit.
+22. wallet_topup_transaction
+Fungsi: Top-up saldo dompet.
+Untuk Audit: Siapa yang topup, berapa, kapan, status.
+Audit Trail: Punya approved_by_user_id.
+History: Ada financial_topup_history → sudah siap audit.
+23. user_wallet
+Fungsi: Dompet digital user.
+Untuk Audit: Saldo, perubahan saldo.
+Audit Trail: Perubahan saldo dicatat di wallet_balance_history → sudah siap audit.
+24. wallet_balance_history
+Fungsi: Log perubahan saldo dompet.
+Untuk Audit: Siapa yang ubah, kenapa, berapa sebelum/sesudah.
+Audit Trail: Punya created_by_user_id → sudah siap audit.
+🔹 Kategori 6: Closing & Rekonsiliasi (Pelaporan Harian & Rekening Koran)
+25. location_daily_closing_batch
+Fungsi: Laporan harian per lokasi (saldo awal/akhir, varian).
+Untuk Audit: Siapa yang submit, review, approve.
+Audit Trail: Punya submitted_by_user_id, reviewed_by_user_id, approved_by_user_id.
+History: Ada location_daily_closing_history → sudah siap audit.
+26. location_daily_closing_item
+Fungsi: Item dalam laporan closing (detail transaksi).
+Untuk Audit: Referensi ke entity asli (transaksi, adjustment).
+Audit Trail: Terhubung ke batch → sudah siap audit.
+27. financial_settlement_batch
+Fungsi: Batch settlement ke pihak ketiga (misal: bank, payment gateway).
+Untuk Audit: Siapa yang generate/approve.
+Audit Trail: Punya generated_by_user_id, approved_by_user_id → sudah siap audit.
+28. payment_gateway_reconciliation_batch
+Fungsi: Rekonsiliasi pembayaran internal vs gateway.
+Untuk Audit: Siapa yang rekonsiliasi, beda apa.
+Audit Trail: Punya generated_by_user_id, approved_by_user_id → sudah siap audit.
+29. payment_gateway_reconciliation_item
+Fungsi: Item perbedaan rekonsiliasi.
+Untuk Audit: Apa yang tidak match, kenapa.
+Audit Trail: Terhubung ke batch → sudah siap audit.
+🔹 Kategori 7: Alert & Callback (Event Sistem & Eksternal)
+30. admin_alert_event
+Fungsi: Event alert yang dipicu oleh sistem.
+Untuk Audit: Siapa yang acknowledge/resolve, kapan.
+Audit Trail: Punya acknowledged_by_user_id, resolved_by_user_id, tapi tidak punya created_by_user_id dan tidak punya history → tidak siap audit.
+31. payment_gateway_callback_history
+Fungsi: Log callback dari gateway pembayaran.
+Untuk Audit: Apa yang dikirim gateway, signature OK, bagaimana diproses.
+Audit Trail: Tidak ada user ID, tapi payload dicatat → cukup siap audit.
+🔹 Kategori 8: Laporan & Ekspor
+32. report_export_job
+Fungsi: Antrian ekspor laporan.
+Untuk Audit: Siapa yang minta laporan, kapan, jenisnya.
+Audit Trail: Punya requested_by_user_id → sudah siap audit.

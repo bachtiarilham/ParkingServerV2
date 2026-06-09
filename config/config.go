@@ -5,6 +5,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"time"
 )
 
 type Config struct {
@@ -21,8 +22,8 @@ type Config struct {
 	QueueLeaseSeconds  int
 	QueueRetrySeconds  int
 	QueueWaitTimeoutMS int
-	AccessTokenMinutes int
-	RefreshTokenHours  int
+	AccessTokenMinutes time.Duration
+	RefreshTokenHours  time.Duration
 	OTPExpiryMinutes   int
 }
 
@@ -41,8 +42,8 @@ func Load() Config {
 		QueueLeaseSeconds:  getEnvAsInt("QUEUE_LEASE_SECONDS", 30),
 		QueueRetrySeconds:  getEnvAsInt("QUEUE_RETRY_SECONDS", 5),
 		QueueWaitTimeoutMS: getEnvAsInt("QUEUE_WAIT_TIMEOUT_MS", 1500),
-		AccessTokenMinutes: getEnvAsInt("ACCESS_TOKEN_MINUTES", 60),
-		RefreshTokenHours:  getEnvAsInt("REFRESH_TOKEN_HOURS", 24*30),
+		AccessTokenMinutes: time.Duration(getEnvAsInt("ACCESS_TOKEN_MINUTES", 60)) * time.Minute,
+		RefreshTokenHours:  time.Duration(getEnvAsInt("REFRESH_TOKEN_HOURS", 24*30)) * time.Hour,
 		OTPExpiryMinutes:   getEnvAsInt("OTP_EXPIRY_MINUTES", 10),
 	}
 }

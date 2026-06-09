@@ -31,9 +31,12 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.registerUC.Execute(r.Context(), authuc.RegisterRequest{
-		Name:     req.Name,
+	err := h.registerUC.Execute(r.Context(), dto.RegisterRequest{
+		FullName: req.FullName,
+		Nik:      req.Nik,
 		Email:    req.Email,
+		Phone:    req.Phone,
+		Username: req.Username,
 		Password: req.Password,
 	})
 	if err != nil {
@@ -46,13 +49,14 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req dto.LoginRequest
+
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		response.Error(w, http.StatusBadRequest, "request tidak valid")
 		return
 	}
 
-	result, err := h.loginUC.Execute(r.Context(), authuc.LoginRequest{
-		Email:    req.Email,
+	result, err := h.loginUC.Execute(r.Context(), dto.LoginRequest{
+		Identity: req.Identity,
 		Password: req.Password,
 	})
 	if err != nil {

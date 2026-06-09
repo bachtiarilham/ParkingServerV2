@@ -5,9 +5,13 @@ package auth
 import "time"
 
 type Credential struct {
-	UserID       int64
+	ID           int64
+	FullName     string
+	Role         string
 	Email        string
 	PasswordHash string
+	UpdatedAt    time.Time
+	CreatedAt    time.Time
 }
 
 type Session struct {

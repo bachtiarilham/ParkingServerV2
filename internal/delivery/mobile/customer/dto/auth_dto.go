@@ -1,26 +1,48 @@
 package dto
 
-// --- Register ---
+// // --- Register ---
 
 type RegisterRequest struct {
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	FullName    string `json:"full_name"`
+	NIK         string `json:"nik"`
+	PhoneNumber string `json:"phone_number"`
+	Email       string `json:"email"`
+	Username    string `json:"username"`
+	Password    string `json:"password"`
 }
 
 type RegisterResponse struct {
 	Message string `json:"message"`
+	UserID  string `json:"user_id"` // Karena ID bisa besar, kirim sebagai string
 }
 
 // --- Login ---
 
 type LoginRequest struct {
-	Email    string `json:"email"`
+	Identity string `json:"identity"`
 	Password string `json:"password"`
 }
 
 type LoginResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	ExpiresAt    int64  `json:"expires_at"`
+	AuthUser AuthUser `json:"auth_user"`
+	TokenSet TokenSet `json:"token"`
+}
+
+type AuthUser struct {
+	UserId     int64  `json:"user_id"`
+	FullName   string `json:"full_name"`
+	Nik        string `json:"nik"`
+	Email      string `json:"email"`
+	Phone      string `json:"phone"`
+	Username   string `json:"username"`
+	Password   string `json:"password"`
+	Role       string `json:"role"`
+	IsVerified bool   `json:"is_verified"`
+}
+
+type TokenSet struct {
+	AccessToken      string `json:"access_token"`
+	RefreshToken     string `json:"refresh_token"`
+	TokenType        string `json:"token_type"`
+	ExpiresInSeconds int64  `json:"expires_at"`
 }

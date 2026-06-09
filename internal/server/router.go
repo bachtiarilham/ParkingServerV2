@@ -30,15 +30,41 @@ import (
 	"net/http"
 
 	"modulegue/config"
-	"modulegue/internal/delivery/desktop"
+	// "modulegue/internal/delivery/desktop"
 	"modulegue/internal/delivery/mobile/customer"
 	"modulegue/internal/delivery/mobile/jukir"
-	"modulegue/internal/delivery/web"
+
+	// "modulegue/internal/delivery/web"
+	"modulegue/internal/repository"
+	authuc "modulegue/internal/usecase/auth"
 	"modulegue/pkg/queue"
 
 	// "modulegue/pkg/response"
 	"modulegue/pkg/worker"
 )
+
+// func NewRouter(
+// 	cfg *config.Config,
+// 	db *sql.DB,
+// 	queue *queue.Queue,
+// 	logger *log.Logger,
+// ) (http.Handler, *worker.WorkerPool) {
+// 	mux := http.NewServeMux()
+
+// 	workerPool := worker.NewWorkerPool(queue, cfg.QueueWorkerCount, logger) // sesuaikan constructor
+
+// 	// Daftarkan route dari ketiga delivery
+// 	// customer.RegisterRoutes(mux, db, queue, logger)
+// 	// jukir.RegisterRoutes(mux, db, queue, logger)
+// 	customer.RegisterRoutes(mux, registerUC, loginUC, queue, logger) // contoh
+// 	jukir.RegisterRoutes(mux, registerUC, loginUC, queue, logger)
+// 	desktop.RegisterRoutes(mux, db, queue, logger)
+// 	web.RegisterRoutes(mux, db, queue, logger)
+
+// 	// Siapkan worker pool (contoh: baca konfigurasi dari cfg)
+
+// 	return mux, workerPool
+// }
 
 func NewRouter(
 	cfg *config.Config,
@@ -46,64 +72,32 @@ func NewRouter(
 	queue *queue.Queue,
 	logger *log.Logger,
 ) (http.Handler, *worker.WorkerPool) {
-	// _ = cfg
 	mux := http.NewServeMux()
 
-	// adminService := adminstore.New(db)
-	// adminHTTPHandler := adminendpoints.NewHTTPHandler(adminService, queue, cfg)
-	// mobileHTTPHandler := mobile.NewHTTPHandler(db, queue, cfg)
+	workerPool := worker.NewWorkerPool(queue, cfg.QueueWorkerCount, logger)
 
-	workerPool := worker.NewWorkerPool(queue, cfg.QueueWorkerCount, logger) // sesuaikan constructor
+	// Buat semua repositories
+	userRepo := repository.NewUserRepository(db)
+	authRepo := repository.NewAuthRepository(db)
+	// tambahkan repositori lain sesuai kebutuhan
+	// misalnya: parkingRepo, transactionRepo, dll
 
-	// workerPool := worker.NewWorkerPool(queue, cfg.QueueWorkerCount, logger)
-	// adminHTTPHandler.RegisterQueueProcessors(workerPool)
-	// mobileHTTPHandler.RegisterQueueProcessors(workerPool)
+	// Buat semua usecases
+	jwtSecret := cfg.JWTSecret
+	accessTTL := cfg.AccessTokenMinutes
+	refreshTTL := cfg.RefreshTokenHours
 
-	// healthHandler := func(service string) http.HandlerFunc {
-	// 	return func(w http.ResponseWriter, r *http.Request) {
+	registerUC := authuc.NewRegisterUseCase(userRepo, authRepo, 3) // Contoh: 3 untuk role customer
+	loginUC := authuc.NewLoginUseCase(userRepo, authRepo, jwtSecret, accessTTL, refreshTTL)
 
-	// 		healthData := map[string]any{
-	// 			"success": true,
-	// 			"service": service,
-	// 			"status":  "UP",
-	// 		}
+	// Buat usecase lainnya sesuai kebutuhan
+	// misalnya: parkingUC, transactionUC, dll
 
-	// 		response.Success(w, http.StatusOK, "Service is healthy", healthData)
-
-	// 		// response.JSON(w, http.StatusOK, response.APIResponse{
-	// 		// 	"success": true,
-	// 		// 	"service": service,
-	// 		// 	"status":  "UP",
-	// 		// })
-	// 	}
-	// }
-
-	// unhealthy := func(service string) http.HandlerFunc {
-	// 	return func(w http.ResponseWriter, r *http.Request) {
-	// 		// healthData := map[string]any{
-	// 		// 	"success": false,
-	// 		// 	"service": service,
-	// 		// 	"status":  "DOWN",
-	// 		// 	}
-
-	// 		response.Error(w, http.StatusBadRequest, "Service is unhealthy")
-
-	// 		// response.JSON(w, http.StatusNotImplemented, response.APIResponse{
-	// 		// 	"success": false,
-	// 		// 	"service": service,
-	// 		// 	"message": "namespace disiapkan, endpoint bisnis belum diimplementasikan pada rombak v2 ini",
-	// 		// })
-	// 	}
-	// }
-	// mux := http.NewServeMux()
-
-	// Daftarkan route dari ketiga delivery
-	customer.RegisterRoutes(mux, db, queue, logger)
-	jukir.RegisterRoutes(mux, db, queue, logger)
-	desktop.RegisterRoutes(mux, db, queue, logger)
-	web.RegisterRoutes(mux, db, queue, logger)
-
-	// Siapkan worker pool (contoh: baca konfigurasi dari cfg)
+	// Daftarkan routes dengan usecase
+	customer.RegisterRoutes(mux, registerUC, loginUC, queue, logger)
+	jukir.RegisterRoutes(mux, registerUC, loginUC, queue, logger)
+	// desktop.RegisterRoutes(mux, registerUC, loginUC, queue, logger)
+	// web.RegisterRoutes(mux, registerUC, loginUC, queue, logger)
 
 	return mux, workerPool
 }

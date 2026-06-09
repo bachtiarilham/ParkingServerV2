@@ -53,3 +53,19 @@ func sha256Hash(salt, password string) string {
 	h.Write([]byte(salt + password))
 	return hex.EncodeToString(h.Sum(nil))
 }
+
+// func (r *AuthRepository) Hash(password string) (string, error) {
+// 	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+// 	if err != nil {
+// 		return "", fmt.Errorf("hash password: %w", err)
+// 	}
+// 	return string(hashedBytes), nil
+// }
+
+// func (r *AuthRepository) Compare(hash string, plain string) error {
+// 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(plain))
+// 	if err != nil {
+// 		return fmt.Errorf("password does not match: %w", err)
+// 	}
+// 	return nil
+// }

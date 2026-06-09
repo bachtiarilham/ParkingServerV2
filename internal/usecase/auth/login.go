@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	// "modulegue/internal/delivery/mobile/customer/dto"
 	"modulegue/internal/domain/auth"
 	"modulegue/internal/domain/user"
 	"modulegue/pkg/hash"
@@ -18,11 +19,14 @@ var (
 )
 
 type LoginRequest struct {
-	Email    string
+	Identity string
 	Password string
 }
 
 type LoginResponse struct {
+	UserID       int64
+	FullName     string
+	Role         string
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 	ExpiresAt    int64  `json:"expires_at"`
@@ -53,14 +57,14 @@ func NewLoginUseCase(
 }
 
 func (uc *LoginUseCase) Execute(ctx context.Context, req LoginRequest) (LoginResponse, error) {
-	// 1. Cari user berdasarkan email
-	u, err := uc.userRepo.FindByEmail(ctx, req.Email)
+	// 1. Cari user berdasarkan identity
+	u, err := uc.userRepo.FindByEmail(ctx, req.Identity)
 	if err != nil {
 		return LoginResponse{}, ErrInvalidCredentials
 	}
 
 	// 2. Verifikasi password
-	if err := hash.Compare(u.Password, req.Password); err != nil {
+	if err := hash.Compare(u.PasswordHash, req.Password); err != nil {
 		return LoginResponse{}, ErrInvalidCredentials
 	}
 
@@ -102,6 +106,9 @@ func (uc *LoginUseCase) Execute(ctx context.Context, req LoginRequest) (LoginRes
 	}
 
 	return LoginResponse{
+		UserID:       u.ID,
+		FullName:     u.FullName,
+		Role:         u.Role,
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		ExpiresAt:    accessExp.Unix(),

@@ -3,12 +3,12 @@ package auth
 import "context"
 
 type Repository interface {
-	FindByEmail(
-		ctx context.Context,
-		email string,
-	) (*Credential, error)
-	Hash(password string) (string, error)
-	Compare(hash string, plain string) error
+	// FindByEmail(
+	// 	ctx context.Context,
+	// 	email string,
+	// ) (*Credential, error)
+	// Hash(password string) (string, error)
+	// Compare(hash string, plain string) error
 	// SaveSession menyimpan refresh token session baru
 	SaveSession(ctx context.Context, s Session) error
 
