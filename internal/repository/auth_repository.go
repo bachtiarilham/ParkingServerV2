@@ -62,10 +62,10 @@ func NewAuthRepository(db *sql.DB) auth.Repository {
 
 func (r *AuthRepository) SaveSession(ctx context.Context, s auth.Session) error {
 	query := `
-		INSERT INTO system_user_sessions (user_id, refresh_token, expires_at, created_at)
-		VALUES (?, ?, ?, NOW())
+		INSERT INTO system_user_sessions (user_id, token_type, refresh_token, expires_at, created_at)
+		VALUES (?, ?, ?, ?, NOW())
 	`
-	_, err := r.db.ExecContext(ctx, query, s.UserID, s.RefreshToken, s.ExpiresAt)
+	_, err := r.db.ExecContext(ctx, query, s.UserID, s.TokenType, s.RefreshToken, s.ExpiresAt)
 	if err != nil {
 		return fmt.Errorf("save session: %w", err)
 	}
@@ -83,6 +83,7 @@ func (r *AuthRepository) FindSessionByRefreshToken(ctx context.Context, token st
 	err := r.db.QueryRowContext(ctx, query, token).Scan(
 		&s.ID,
 		&s.UserID,
+		&s.TokenType,
 		&s.RefreshToken,
 		&s.ExpiresAt,
 		&s.CreatedAt,

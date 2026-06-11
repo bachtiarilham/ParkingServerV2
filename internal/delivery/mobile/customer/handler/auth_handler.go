@@ -3,52 +3,35 @@ package handler
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
+
+	// "fmt"
 	"net/http"
 	"time"
 
 	"modulegue/internal/delivery/mobile/customer/dto"
+	auth "modulegue/internal/domain/auth"
 	authuc "modulegue/internal/usecase/auth"
+
 	"modulegue/pkg/response"
 )
 
 type AuthHandler struct {
 	registerUC *authuc.RegisterUseCase
 	loginUC    *authuc.LoginUseCase
+	refreshUC  *authuc.RefreshTokenUseCase
 }
 
 func NewAuthHandler(
 	registerUC *authuc.RegisterUseCase,
 	loginUC *authuc.LoginUseCase,
+	refreshUC *authuc.RefreshTokenUseCase,
 ) *AuthHandler {
 	return &AuthHandler{
 		registerUC: registerUC,
 		loginUC:    loginUC,
+		refreshUC:  refreshUC,
 	}
 }
-
-// func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
-// 	var req dto.RegisterRequest
-// 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-// 		response.Error(w, http.StatusBadRequest, "request tidak valid")
-// 		return
-// 	}
-
-// 	err := h.registerUC.Execute(r.Context(), dto.RegisterRequest{
-// 		FullName: req.FullName,
-// 		Nik:      req.Nik,
-// 		Email:    req.Email,
-// 		Phone:    req.Phone,
-// 		Username: req.Username,
-// 		Password: req.Password,
-// 	})
-// 	if err != nil {
-// 		response.Error(w, http.StatusBadRequest, err.Error())
-// 		return
-// 	}
-
-// 	response.Success(w, http.StatusCreated, "registrasi berhasil", nil)
-// }
 
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req dto.RegisterRequest
@@ -86,7 +69,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	// --- Mapping: UseCase Output -> DTO ---
 	resp := dto.RegisterResponse{
 		Message: result.Message,
-		UserID:  fmt.Sprintf("%d", result.UserID),
+		UserID:  result.UserID,
 	}
 
 	response.Success(w, http.StatusCreated, "registrasi berhasil", resp)
@@ -116,15 +99,6 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// response.Success(w, http.StatusOK, "login berhasil", dto.LoginResponse{
-	// 	UserID:       result.UserID,
-	// 	FullName:     result.FullName,
-	// 	Role:         result.Role,
-	// 	AccessToken:  result.AccessToken,
-	// 	RefreshToken: result.RefreshToken,
-	// 	ExpiresAt:    result.ExpiresAt,
-	// })
-
 	resp := dto.LoginResponse{
 		AuthUser: dto.AuthUser{
 			UserId:   result.UserID,
@@ -138,6 +112,50 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 	response.Success(w, http.StatusOK, "login berhasil", resp)
-	response.Error(w, http.StatusInternalServerError, "lu gagal login")
+}
 
+func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
+	var req dto.RefreshTokenRequestDto
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Error(w, http.StatusBadRequest, "request tidak valid")
+		return
+	}
+
+	input := authuc.RefreshTokenInput{
+		RefreshToken: req.RefreshToken,
+	}
+
+	result, err := h.refreshUC.Execute(r.Context(), input)
+	if err != nil {
+		// Log error jika perlu
+		switch {
+		case errors.Is(err, authuc.ErrInvalidRefreshToken):
+			response.Error(w, http.StatusUnauthorized, "refresh token tidak valid")
+		case errors.Is(err, authuc.ErrExpiredRefreshToken):
+			response.Error(w, http.StatusUnauthorized, "refresh token sudah kadaluarsa")
+		case errors.Is(err, authuc.ErrUserNotFound):
+			response.Error(w, http.StatusUnauthorized, "akun tidak ditemukan atau tidak aktif")
+		default:
+			response.Error(w, http.StatusInternalServerError, "terjadi kesalahan internal")
+		}
+		return
+	}
+
+	// Mapping: UseCase Output -> DTO
+	var session auth.Session
+	resp := dto.RefreshTokenResponseDto{
+		AuthUser: dto.AuthUser{
+			// Ambil dari user entity jika diperlukan, atau gunakan ID dari session
+			UserId: session.UserID, // Gunakan ID dari session lama
+			// FullName: user.FullName, // Jika kamu ingin mengembalikan nama
+		},
+		TokenSet: dto.TokenSet{
+			AccessToken:      result.AccessToken,
+			RefreshToken:     result.RefreshToken,
+			TokenType:        "Bearer",
+			ExpiresInSeconds: result.ExpiresAt - time.Now().Unix(),
+		},
+	}
+
+	response.Success(w, http.StatusOK, "token diperbarui", resp)
 }

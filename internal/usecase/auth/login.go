@@ -26,7 +26,7 @@ type LoginRequest struct {
 type LoginResponse struct {
 	UserID       int64
 	FullName     string
-	Role         string
+	Role         int64
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 	ExpiresAt    int64  `json:"expires_at"`
@@ -88,6 +88,7 @@ func (uc *LoginUseCase) Execute(ctx context.Context, req LoginRequest) (LoginRes
 	refreshToken, err := jwt.SignHS256(jwt.Claims{
 		Subject:    fmt.Sprintf("%d", u.ID),
 		UserID:     u.ID,
+		TokenType:  "refresh",
 		Expiration: refreshExp.Unix(),
 		IssuedAt:   now.Unix(),
 		Type:       "refresh",
@@ -99,6 +100,7 @@ func (uc *LoginUseCase) Execute(ctx context.Context, req LoginRequest) (LoginRes
 	// 5. Simpan session ke DB
 	if err := uc.authRepo.SaveSession(ctx, auth.Session{
 		UserID:       u.ID,
+		TokenType:    "JWT",
 		RefreshToken: refreshToken,
 		ExpiresAt:    refreshExp,
 	}); err != nil {
@@ -108,7 +110,7 @@ func (uc *LoginUseCase) Execute(ctx context.Context, req LoginRequest) (LoginRes
 	return LoginResponse{
 		UserID:       u.ID,
 		FullName:     u.FullName,
-		Role:         u.Role,
+		Role:         u.RoleID,
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		ExpiresAt:    accessExp.Unix(),

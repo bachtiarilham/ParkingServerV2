@@ -13,7 +13,7 @@ type RegisterRequest struct {
 
 type RegisterResponse struct {
 	Message string `json:"message"`
-	UserID  string `json:"user_id"` // Karena ID bisa besar, kirim sebagai string
+	UserID  int64  `json:"user_id"` // Karena ID bisa besar, kirim sebagai string
 }
 
 // --- Login ---
@@ -36,7 +36,7 @@ type AuthUser struct {
 	Phone      string `json:"phone"`
 	Username   string `json:"username"`
 	Password   string `json:"password"`
-	Role       string `json:"role"`
+	Role       int64  `json:"role_id"`
 	IsVerified bool   `json:"is_verified"`
 }
 
@@ -45,4 +45,13 @@ type TokenSet struct {
 	RefreshToken     string `json:"refresh_token"`
 	TokenType        string `json:"token_type"`
 	ExpiresInSeconds int64  `json:"expires_at"`
+}
+
+type RefreshTokenRequestDto struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
+type RefreshTokenResponseDto struct {
+	AuthUser `json:",inline"` // Embed AuthUser
+	TokenSet `json:",inline"` // Embed TokenSet
 }

@@ -29,9 +29,10 @@ type Config struct {
 
 func Load() Config {
 	return Config{
-		AppEnv:             getEnv("APP_ENV", "development"),
-		AppPort:            getEnv("APP_PORT", "8080"),
-		DBHost:             getEnv("DB_HOST", "127.0.0.1"),
+		AppEnv:  getEnv("APP_ENV", "development"),
+		AppPort: getEnv("APP_PORT", "8080"),
+		// DBHost:             getEnv("DB_HOST", "127.0.0.1"),
+		DBHost:             getEnv("DB_HOST", "localhost"),
 		DBPort:             getEnv("DB_PORT", "3306"),
 		DBName:             getEnv("DB_NAME", "parkir_v2"),
 		DBUser:             getEnv("DB_USER", "root"),

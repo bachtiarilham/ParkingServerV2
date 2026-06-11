@@ -17,6 +17,7 @@ type Claims struct {
 	Type       string `json:"typ,omitempty"`
 	Role       string `json:"role,omitempty"`
 	UserID     int64  `json:"uid,omitempty"`
+	TokenType  string `json:"token_type,omitempty"`
 }
 
 func ParseSubjectHS256(token, secret string) (string, error) {

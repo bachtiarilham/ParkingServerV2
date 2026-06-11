@@ -11,7 +11,7 @@ type User struct {
 	Nik              string
 	Email            string
 	Phone            string
-	Role             string
+	Role             int64
 	Username         string
 	EmploymentStatus string
 	IsVerified       bool

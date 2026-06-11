@@ -9,142 +9,49 @@ import (
 	"strconv"
 )
 
-type TransactionHandler struct {
-	submitQrUC   *payment.SubmitQrUseCase
-	scanDetailUC *payment.GetScanDetailUseCase
-	paymentUC    *payment.ExecutePaymentUseCase
+type PaymentHandler struct {
+	executePaymentUC *payment.ExecutePaymentUseCase
 }
 
-func NewTransactionHandler(
-	submitQrUC *payment.SubmitQrUseCase,
-	scanDetailUC *payment.GetScanDetailUseCase,
-	paymentUC *payment.ExecutePaymentUseCase,
-) *TransactionHandler {
-	return &TransactionHandler{
-		submitQrUC:   submitQrUC,
-		scanDetailUC: scanDetailUC,
-		paymentUC:    paymentUC,
-	}
+func NewPaymentHandler(executePaymentUC *payment.ExecutePaymentUseCase) *PaymentHandler {
+	return &PaymentHandler{executePaymentUC: executePaymentUC}
 }
 
-func (h *TransactionHandler) SubmitQr(w http.ResponseWriter, r *http.Request) {
-	var req dto.SubmitQrRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-
-	// Ambil customer ID dari context JWT
-	customerID, ok := r.Context().Value("userID").(int64)
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
-
-	input := payment.SubmitQrInput{
-		ScannedQrString: req.ScannedQrString,
-		CustomerID:      customerID,
-	}
-
-	result, err := h.submitQrUC.Execute(r.Context(), input)
-	if err != nil {
-		response.Error(w, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	// Kita return session ID untuk digunakan di tahap selanjutnya
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"message":    result.Message,
-		"session_id": strconv.FormatInt(result.SessionID, 10), // Kirim session ID ke client
-	})
-}
-
-func (h *TransactionHandler) GetScanDetail(w http.ResponseWriter, r *http.Request) {
-	sessionIDStr := r.URL.Query().Get("session_id") // Ambil dari query param
-	if sessionIDStr == "" {
-		response.Error(w, http.StatusBadRequest, "session_id is required")
-		return
-	}
-	sessionID, err := strconv.ParseInt(sessionIDStr, 10, 64)
-	if err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid session_id")
-		return
-	}
-
-	customerID, ok := r.Context().Value("userID").(int64)
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
-
-	input := payment.GetScanDetailInput{
-		SessionID:  sessionID,
-		CustomerID: customerID,
-	}
-
-	result, err := h.scanDetailUC.Execute(r.Context(), input)
-	if err != nil {
-		response.Error(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	resp := dto.ScanDetailDto{
-		CustomerId:   result.CustomerID,
-		CustomerName: result.CustomerName,
-		Lokasi:       result.LocationName,
-		Duration:     result.Duration,
-		IsMember:     result.IsMember,
-		Total:        result.Total,
-		Breakdown:    []dto.PriceItemDto{},
-	}
-	for _, item := range result.Breakdown {
-		resp.Breakdown = append(resp.Breakdown, dto.PriceItemDto{
-			Label:  item.Label,
-			Amount: item.Amount,
-		})
-	}
-
-	response.Success(w, http.StatusOK, "Scan detail retrieved", resp)
-}
-
-func (h *TransactionHandler) ExecutePayment(w http.ResponseWriter, r *http.Request) {
+// Endpoint: POST /api/v2/linespot/pay
+func (h *PaymentHandler) ExecutePayment(w http.ResponseWriter, r *http.Request) {
 	var req dto.ExecutePaymentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid request body")
+		response.Error(w, http.StatusBadRequest, "request tidak valid")
 		return
 	}
 
-	customerID, ok := r.Context().Value("userID").(int64)
+	// Ambil customer ID dari JWT context
+	userID, ok := r.Context().Value("userID").(int64)
 	if !ok {
 		response.Error(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	// Validasi: customer_id dari body harus sama dengan userID dari JWT
+	custID, err := strconv.ParseInt(req.CustomerID, 10, 64)
+	if err != nil || custID != userID {
+		response.Error(w, http.StatusForbidden, "customer_id tidak valid")
 		return
 	}
 
 	sessionID, err := strconv.ParseInt(req.SessionID, 10, 64)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid session_id")
-		return
-	}
-
-	custID, err := strconv.ParseInt(req.CustomerID, 10, 64)
-	if err != nil {
-		response.Error(w, http.StatusBadRequest, "invalid customer_id")
-		return
-	}
-
-	// Validasi customer ID dari body cocok dengan context
-	if custID != customerID {
-		response.Error(w, http.StatusForbidden, "forbidden")
+		response.Error(w, http.StatusBadRequest, "session_id tidak valid")
 		return
 	}
 
 	input := payment.ExecutePaymentInput{
-		CustomerID: customerID,
+		CustomerID: userID,
 		Total:      req.Total,
 		SessionID:  sessionID,
 	}
 
-	result, err := h.paymentUC.Execute(r.Context(), input)
+	result, err := h.executePaymentUC.Execute(r.Context(), input)
 	if err != nil {
 		response.Error(w, http.StatusInternalServerError, err.Error())
 		return
@@ -159,5 +66,5 @@ func (h *TransactionHandler) ExecutePayment(w http.ResponseWriter, r *http.Reque
 		ExpiredAt:  result.ExpiredAt,
 	}
 
-	response.Success(w, http.StatusOK, "Payment initiated", resp)
+	response.Success(w, http.StatusOK, "Pembayaran diproses", resp)
 }
