@@ -10,26 +10,33 @@ import (
 
 	"modulegue/internal/delivery/mobile/customer/dto"
 	auth "modulegue/internal/domain/auth"
+	"modulegue/internal/middleware" // Import middleware untuk userID
 	authuc "modulegue/internal/usecase/auth"
 
 	"modulegue/pkg/response"
 )
 
 type AuthHandler struct {
-	registerUC *authuc.RegisterUseCase
-	loginUC    *authuc.LoginUseCase
-	refreshUC  *authuc.RefreshTokenUseCase
+	registerUC       *authuc.RegisterUseCase
+	loginUC          *authuc.LoginUseCase
+	refreshUC        *authuc.RefreshTokenUseCase
+	logoutUC         *authuc.LogoutUseCase
+	changePasswordUC *authuc.ChangePasswordUseCase
 }
 
 func NewAuthHandler(
 	registerUC *authuc.RegisterUseCase,
 	loginUC *authuc.LoginUseCase,
 	refreshUC *authuc.RefreshTokenUseCase,
+	logoutUC *authuc.LogoutUseCase, // <-- Tambahkan LogoutUseCase jika diperlukan
+	changePasswordUC *authuc.ChangePasswordUseCase, // <-- Tambahkan ChangePasswordUseCase
 ) *AuthHandler {
 	return &AuthHandler{
-		registerUC: registerUC,
-		loginUC:    loginUC,
-		refreshUC:  refreshUC,
+		registerUC:       registerUC,
+		loginUC:          loginUC,
+		refreshUC:        refreshUC,
+		logoutUC:         logoutUC,         // Simpan LogoutUseCase di struct jika diperlukan
+		changePasswordUC: changePasswordUC, // Simpan ChangePasswordUseCase di struct
 	}
 }
 
@@ -159,3 +166,105 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	response.Success(w, http.StatusOK, "token diperbarui", resp)
 }
+
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		RefreshToken string `json:"refresh_token"` // Refresh token opsional untuk revoke spesifik
+	}
+	// Decode body hanya untuk mengambil refresh token jika diperlukan
+	_ = json.NewDecoder(r.Body).Decode(&req) // Abaikan error jika body kosong
+
+	// Ambil userID dari context (harus sudah disisipkan oleh middleware JWT)
+	// userID, ok := r.Context().Value("user_id").(int64)
+	// if !ok {
+	// 	response.Error(w, http.StatusUnauthorized, "Unauthorized")
+	// 	return
+	// }
+
+	// Buat input untuk usecase
+	// Kita bisa mengambil access token dari header, tapi karena sudah diotentikasi,
+	// kita hanya perlu userID dari context dan refresh token dari body (jika ada)
+	// Untuk sederhananya, kita bisa kirim refresh token kosong untuk logout semua session
+	input := authuc.LogoutInput{
+		// AccessToken: r.Header.Get("Authorization")[7:], // Ambil dari header, hilangkan "Bearer "
+		// Lebih baik tidak mengandalkan access token di body atau header untuk logout,
+		// karena tujuan logout adalah menghapus state otentikasi.
+		RefreshToken: req.RefreshToken, // Kirim refresh token jika ingin revoke spesifik
+	}
+
+	result, err := h.logoutUC.Execute(r.Context(), input) // Asumsikan logoutUC disimpan di struct AuthHandler
+	if err != nil {
+		// Log error jika perlu
+		response.Error(w, http.StatusInternalServerError, "logout gagal")
+		return
+	}
+
+	response.Success(w, http.StatusOK, result.Message, nil) // Tidak ada data yang dikembalikan
+}
+
+// ... (import lainnya)
+
+// ChangePassword handler
+func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	var req dto.ChangePasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Error(w, http.StatusBadRequest, "request tidak valid")
+		return
+	}
+
+	// Ambil userID dari JWT context
+	// userID, ok := r.Context().Value("user_id").(int64) // Sesuaikan dengan key di middleware kamu
+	// if !ok {
+	// 	response.Error(w, http.StatusUnauthorized, "Unauthorized")
+	// 	return
+	// }
+
+	userID, ok := middleware.UserIDFromContext(r.Context()) // <-- Gunakan fungsi helper
+	if !ok {
+		response.Error(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	// Validasi input sederhana
+	if req.OldPassword == "" || req.NewPassword == "" {
+		response.Error(w, http.StatusBadRequest, "password lama dan password baru wajib diisi")
+		return
+	}
+
+	// Buat input untuk usecase
+	input := authuc.ChangePasswordInput{
+		UserID:      userID, // Ambil dari context
+		OldPassword: req.OldPassword,
+		NewPassword: req.NewPassword,
+	}
+
+	result, err := h.changePasswordUC.Execute(r.Context(), input) // Asumsikan changePasswordUC disimpan di struct AuthHandler
+	if err != nil {
+		// Log error jika perlu
+		switch {
+		case errors.Is(err, authuc.ErrOldPasswordMismatch):
+			response.Error(w, http.StatusBadRequest, "password lama tidak cocok")
+		case errors.Is(err, authuc.ErrNewPasswordSameAsOld):
+			response.Error(w, http.StatusBadRequest, "password baru tidak boleh sama dengan password lama")
+		default:
+			response.Error(w, http.StatusInternalServerError, "gagal mengubah password")
+		}
+		return
+	}
+
+	response.Success(w, http.StatusOK, result.Message, nil) // Tidak ada data yang dikembalikan
+}
+
+// Jangan lupa tambahkan changePasswordUC ke struct AuthHandler
+// type AuthHandler struct {
+// 	// ... field lainnya
+// 	changePasswordUC *authuc.ChangePasswordUseCase
+// }
+
+// Dan tambahkan ke constructor NewAuthHandler
+// func NewAuthHandler(..., changePasswordUC *authuc.ChangePasswordUseCase) *AuthHandler {
+// 	return &AuthHandler{
+// 	    // ... field lainnya
+// 	    changePasswordUC: changePasswordUC,
+// 	}
+// }

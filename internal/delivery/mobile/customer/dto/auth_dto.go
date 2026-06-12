@@ -55,3 +55,12 @@ type RefreshTokenResponseDto struct {
 	AuthUser `json:",inline"` // Embed AuthUser
 	TokenSet `json:",inline"` // Embed TokenSet
 }
+
+type ChangePasswordRequest struct {
+	OldPassword string `json:"old_password"`
+	NewPassword string `json:"new_password"`
+}
+
+type ChangePasswordResponse struct {
+	Message string `json:"message"`
+}

@@ -125,7 +125,8 @@ import (
 	"modulegue/internal/repository"
 	authuc "modulegue/internal/usecase/auth"
 	homeuc "modulegue/internal/usecase/home"
-	transuc "modulegue/internal/usecase/payment" // <-- Ganti dari 'payment' ke 'transaction'
+	transuc "modulegue/internal/usecase/payment"
+	useruc "modulegue/internal/usecase/user"
 	"modulegue/pkg/queue"
 	"modulegue/pkg/worker"
 )
@@ -168,6 +169,7 @@ func NewRouter(
 		refreshTTL,
 	)
 
+	getUserProfileUC := useruc.NewGetProfileUseCase(userRepo)
 	refreshUC := authuc.NewRefreshTokenUseCase(
 		authRepo,
 		userRepo, // Untuk verifikasi user aktif saat refresh
@@ -202,11 +204,18 @@ func NewRouter(
 	// --- Daftarkan Routes ---
 	// Customer Routes
 	// var refreshUC *authuc.RefreshTokenUseCase
+	logoutUC := authuc.NewLogoutUseCase(authRepo)
+
+	changePasswordUC := authuc.NewChangePasswordUseCase(userRepo, authRepo) // <-- Tambahkan authRepo sebagai parameter
+
 	customer.RegisterRoutes(
 		mux,
 		registerUC,
 		loginUC,
+		logoutUC, // <-- Tambahkan LogoutUseCase
 		refreshUC,
+		getUserProfileUC,
+		changePasswordUC, // <-- Tambahkan ChangePasswordUseCase
 		homeUC,
 		executePaymentUC, // <-- Gunakan dari 'transaction'
 		scanDetailUC,     // <-- Gunakan dari 'transaction'

@@ -13,7 +13,7 @@ import (
 
 type contextKey string
 
-const ContextKeyUserID contextKey = "user_id"
+const ContextKeyUserID contextKey = "uid"
 
 // JWTAuth memvalidasi Bearer token dan menyimpan userID ke context
 func JWTAuth(secret string) func(http.Handler) http.Handler {
