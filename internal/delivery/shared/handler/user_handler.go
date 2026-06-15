@@ -2,7 +2,7 @@ package handler
 
 import (
 	"errors"
-	dto "modulegue/internal/delivery/mobile/customer/dto"
+	dto "modulegue/internal/delivery/shared/dto"
 	"modulegue/internal/middleware"   // Import middleware untuk userID
 	"modulegue/internal/usecase/user" // Import usecase user
 	"modulegue/pkg/response"

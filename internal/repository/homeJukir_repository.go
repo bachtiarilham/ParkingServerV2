@@ -4,18 +4,18 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"modulegue/internal/domain/home"
+	home "modulegue/internal/domain/home_jukir"
 )
 
-type HomeRepository struct {
+type HomeJukirRepository struct {
 	db *sql.DB
 }
 
-func NewHomeRepository(db *sql.DB) home.Repository {
-	return &HomeRepository{db: db}
+func NewHomeJukirRepository(db *sql.DB) home.Repository {
+	return &HomeJukirRepository{db: db}
 }
 
-func (r *HomeRepository) GetProfile(ctx context.Context, userID int64) (*home.Profile, error) {
+func (r *HomeJukirRepository) GetProfile(ctx context.Context, userID int64) (*home.Profile, error) {
 	query := `SELECT id, full_name FROM system_user WHERE id = ? LIMIT 1`
 	var p home.Profile
 	err := r.db.QueryRowContext(ctx, query, userID).Scan(&p.ID, &p.Name)
@@ -28,7 +28,7 @@ func (r *HomeRepository) GetProfile(ctx context.Context, userID int64) (*home.Pr
 	return &p, nil
 }
 
-func (r *HomeRepository) GetSummary(ctx context.Context, userID int64) (*home.Summary, error) {
+func (r *HomeJukirRepository) GetSummary(ctx context.Context, userID int64) (*home.Summary, error) {
 	query := `SELECT current_balance_amount FROM user_wallet WHERE user_id = ? AND wallet_status = 'active' LIMIT 1`
 	var balance int64
 	err := r.db.QueryRowContext(ctx, query, userID).Scan(&balance)
@@ -48,7 +48,7 @@ func (r *HomeRepository) GetSummary(ctx context.Context, userID int64) (*home.Su
 	return summary, nil
 }
 
-func (r *HomeRepository) GetRecentEventsAndNews(ctx context.Context, limit int, offset int) ([]home.EventOrNews, error) {
+func (r *HomeJukirRepository) GetRecentEventsAndNews(ctx context.Context, limit int, offset int) ([]home.EventOrNews, error) {
 	query := `
 		SELECT id, title, description, publish_date, image_url, content_type
 		FROM customer_news_and_events
@@ -74,7 +74,7 @@ func (r *HomeRepository) GetRecentEventsAndNews(ctx context.Context, limit int, 
 	return events, nil
 }
 
-func (r *HomeRepository) GetWarnings(ctx context.Context, userID int64) (*home.Warnings, error) {
+func (r *HomeJukirRepository) GetWarnings(ctx context.Context, userID int64) (*home.Warnings, error) {
 	warnings := &home.Warnings{}
 
 	// Cek profil (contoh: cek apakah NIK kosong)

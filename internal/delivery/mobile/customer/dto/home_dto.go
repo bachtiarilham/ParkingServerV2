@@ -1,7 +1,5 @@
 package dto
 
-// import "time"
-
 type HomeResponse struct {
 	Profile  *ProfileDto  `json:"profile"`
 	Summary  *SummaryDto  `json:"summary"`

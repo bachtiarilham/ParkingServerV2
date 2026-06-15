@@ -8,15 +8,15 @@ import (
 	"time"
 )
 
-type TransactionRepository struct {
+type PaymentRepository struct {
 	db *sql.DB
 }
 
-func NewTransactionRepository(db *sql.DB) payment.Repository {
-	return &TransactionRepository{db: db}
+func NewPaymentRepository(db *sql.DB) payment.Repository {
+	return &PaymentRepository{db: db}
 }
 
-func (r *TransactionRepository) GetActiveSessionByCode(ctx context.Context, code string) (*payment.ParkingSession, error) {
+func (r *PaymentRepository) GetActiveSessionByCode(ctx context.Context, code string) (*payment.ParkingSession, error) {
 	query := `
 		SELECT id, session_code, customer_user_id, location_id, started_at, duration_minutes, session_status, plate_number, vehicle_type_id
 		FROM parking_session
@@ -38,7 +38,7 @@ func (r *TransactionRepository) GetActiveSessionByCode(ctx context.Context, code
 	return &s, nil
 }
 
-func (r *TransactionRepository) GetTariffForLocationAndVehicle(ctx context.Context, locationID int64, vehicleTypeID int64) (int64, error) {
+func (r *PaymentRepository) GetTariffForLocationAndVehicle(ctx context.Context, locationID int64, vehicleTypeID int64) (int64, error) {
 	// Asumsi tariff ada di admin_location_setting, dan kita hanya ambil tariff_car_amount untuk semua kendaraan
 	// (bisa disesuaikan dengan logika sebenarnya)
 	query := `
@@ -61,7 +61,7 @@ func (r *TransactionRepository) GetTariffForLocationAndVehicle(ctx context.Conte
 	return tariff, nil
 }
 
-func (r *TransactionRepository) CreateFinancialTransaction(ctx context.Context, tx *payment.FinancialTransaction) error {
+func (r *PaymentRepository) CreateFinancialTransaction(ctx context.Context, tx *payment.FinancialTransaction) error {
 	// Hitung subtotal jika belum dihitung di usecase (disarankan dihitung di usecase)
 	// subtotal = tariff * duration_hours (dibulatkan ke atas)
 	// final_amount = subtotal - discount + penalty
@@ -88,20 +88,24 @@ func (r *TransactionRepository) CreateFinancialTransaction(ctx context.Context, 
 	return nil
 }
 
-func (r *TransactionRepository) GetFinancialTransactionByCode(ctx context.Context, code string) (*payment.FinancialTransaction, error) {
+func (r *PaymentRepository) GetFinancialTransactionByCode(ctx context.Context, code string) (*payment.FinancialTransaction, error) {
 	query := `
 		SELECT id, transaction_code, operation_type, transaction_source, session_id, location_id,
-		       customer_user_id, subtotal_amount, final_amount, currency_code, transaction_status, paid_at, occurred_at, created_at, successful_payment_event_id
+		       customer_user_id, jukir_user_id, subtotal_amount, final_amount, currency_code, transaction_status, paid_at, occurred_at, created_at, successful_payment_event_id,
+		       gov_share, company_share, jukir_share, payment_method
 		FROM financial_parking_transaction
 		WHERE transaction_code = ?
 		LIMIT 1
 	`
 	var tx payment.FinancialTransaction
-	var sessionID, customerID, successfulPaymentEventID *int64
+	var sessionID, customerID, jukirID, successfulPaymentEventID *int64
 	var paidAt *time.Time
+	var govShare, companyShare, jukirShare int64
+	var paymentMethod *string
 	err := r.db.QueryRowContext(ctx, query, code).Scan(
 		&tx.ID, &tx.Code, &tx.OperationType, &tx.TransactionSource, &sessionID, &tx.LocationID,
-		&customerID, &tx.SubtotalAmount, &tx.FinalAmount, &tx.CurrencyCode, &tx.Status, &paidAt, &tx.OccurredAt, &tx.CreatedAt, &successfulPaymentEventID,
+		&customerID, &jukirID, &tx.SubtotalAmount, &tx.FinalAmount, &tx.CurrencyCode, &tx.Status, &paidAt, &tx.OccurredAt, &tx.CreatedAt, &successfulPaymentEventID,
+		&govShare, &companyShare, &jukirShare, &paymentMethod,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -111,12 +115,19 @@ func (r *TransactionRepository) GetFinancialTransactionByCode(ctx context.Contex
 	}
 	tx.SessionID = sessionID
 	tx.CustomerID = customerID
+	tx.JukirID = jukirID
 	tx.PaidAt = paidAt
 	tx.SuccessfulPaymentEventID = successfulPaymentEventID
+	tx.GovShare = govShare
+	tx.CompanyShare = companyShare
+	tx.JukirShare = jukirShare
+	if paymentMethod != nil {
+		tx.PaymentMethod = *paymentMethod
+	}
 	return &tx, nil
 }
 
-func (r *TransactionRepository) UpdateFinancialTransactionStatus(ctx context.Context, transactionID int64, status string, paidAt *time.Time) error {
+func (r *PaymentRepository) UpdateFinancialTransactionStatus(ctx context.Context, transactionID int64, status string, paidAt *time.Time) error {
 	query := `UPDATE financial_parking_transaction SET transaction_status = ?, paid_at = ? WHERE id = ?`
 	_, err := r.db.ExecContext(ctx, query, status, paidAt, transactionID)
 	if err != nil {
@@ -126,7 +137,7 @@ func (r *TransactionRepository) UpdateFinancialTransactionStatus(ctx context.Con
 	return nil
 }
 
-func (r *TransactionRepository) CreatePaymentEvent(ctx context.Context, event *payment.PaymentEvent) error {
+func (r *PaymentRepository) CreatePaymentEvent(ctx context.Context, event *payment.PaymentEvent) error {
 	query := `
 		INSERT INTO financial_payment_event (
 			payment_event_code, payment_context_type, reference_entity_type, reference_entity_id,
@@ -151,7 +162,7 @@ func (r *TransactionRepository) CreatePaymentEvent(ctx context.Context, event *p
 	return nil
 }
 
-func (r *TransactionRepository) GetPaymentEventByCode(ctx context.Context, code string) (*payment.PaymentEvent, error) {
+func (r *PaymentRepository) GetPaymentEventByCode(ctx context.Context, code string) (*payment.PaymentEvent, error) {
 	query := `
 		SELECT id, payment_event_code, payment_context_type, reference_entity_type, reference_entity_id,
 		       gross_amount, net_amount, currency_code, payment_status, created_at, expired_at, settled_at, failed_at,
@@ -179,7 +190,7 @@ func (r *TransactionRepository) GetPaymentEventByCode(ctx context.Context, code 
 	return &event, nil
 }
 
-func (r *TransactionRepository) LinkPaymentEventToTransaction(ctx context.Context, paymentEventID int64, transactionID int64) error {
+func (r *PaymentRepository) LinkPaymentEventToTransaction(ctx context.Context, paymentEventID int64, transactionID int64) error {
 	query := `UPDATE financial_parking_transaction SET successful_payment_event_id = ? WHERE id = ?`
 	_, err := r.db.ExecContext(ctx, query, paymentEventID, transactionID)
 	if err != nil {
@@ -189,7 +200,16 @@ func (r *TransactionRepository) LinkPaymentEventToTransaction(ctx context.Contex
 	return nil
 }
 
-func (r *TransactionRepository) EndParkingSession(ctx context.Context, sessionID int64, endedAt time.Time) error {
+func (r *PaymentRepository) UpdatePaymentEventStatus(ctx context.Context, eventID int64, status string, settledAt, failedAt *time.Time) error {
+	query := `UPDATE financial_payment_event SET payment_status = ?, settled_at = ?, failed_at = ? WHERE id = ?`
+	_, err := r.db.ExecContext(ctx, query, status, settledAt, failedAt, eventID)
+	if err != nil {
+		return fmt.Errorf("update payment event status: %w", err)
+	}
+	return nil
+}
+
+func (r *PaymentRepository) EndParkingSession(ctx context.Context, sessionID int64, endedAt time.Time) error {
 	query := `UPDATE parking_session SET session_status = 'ended', ended_at = ?, updated_at = NOW() WHERE id = ?`
 	_, err := r.db.ExecContext(ctx, query, endedAt, sessionID)
 	if err != nil {

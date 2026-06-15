@@ -1,4 +1,4 @@
-package home
+package home_customer
 
 import "time"
 
@@ -20,8 +20,9 @@ type Profile struct {
 
 // Summary mewakili ringkasan data pengguna
 type Summary struct {
-	Saldo int64 `json:"saldo"` // Asumsi dalam satuan terkecil (misalnya Rupiah)
-	// ExpiredDate *time.Time `json:"expired_date"` // Tidak digunakan sementara
+	Saldo       int64      `json:"saldo"`        // Asumsi dalam satuan terkecil (misalnya Rupiah)
+	ExpiredDate *time.Time `json:"expired_date"` // Tidak digunakan sementara
+
 }
 
 // Warnings mewakili peringatan-peringatan

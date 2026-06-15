@@ -1,4 +1,4 @@
-package home
+package home_customer
 
 import (
 	"context"

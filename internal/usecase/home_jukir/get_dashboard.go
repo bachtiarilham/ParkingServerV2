@@ -1,10 +1,10 @@
-package home
+package home_customer
 
 import (
 	"context"
 	// "errors"
 	// "fmt"
-	"modulegue/internal/domain/home"
+	home "modulegue/internal/domain/home_jukir"
 )
 
 type GetDashboardInput struct {

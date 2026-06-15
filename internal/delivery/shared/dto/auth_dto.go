@@ -36,7 +36,7 @@ type AuthUser struct {
 	Phone      string `json:"phone"`
 	Username   string `json:"username"`
 	Password   string `json:"password"`
-	Role       int64  `json:"role_id"`
+	RoleId     int64  `json:"role_id"`
 	IsVerified bool   `json:"is_verified"`
 }
 

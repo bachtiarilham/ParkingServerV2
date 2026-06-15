@@ -3,7 +3,7 @@ package handler
 import (
 	dto "modulegue/internal/delivery/mobile/customer/dto"
 	middleware "modulegue/internal/middleware"
-	"modulegue/internal/usecase/home"
+	home "modulegue/internal/usecase/home_customer"
 	"modulegue/pkg/response"
 	"net/http"
 	"strconv"
@@ -19,36 +19,12 @@ func NewHomeHandler(getDashboardUC *home.GetDashboardUseCase) *HomeHandler {
 
 // Endpoint: GET /api/v2/linespot/home?customer_id=123
 func (h *HomeHandler) GetDashboard(w http.ResponseWriter, r *http.Request) {
-	// customerIDStr := r.URL.Query().Get("customer_id")
-	// if customerIDStr == "" {
-	// 	response.Error(w, http.StatusBadRequest, "parameter customer_id diperlukan")
-	// 	return
-	// }
-	// customerID, err := strconv.ParseInt(customerIDStr, 10, 64)
-	// if err != nil {
-	// 	response.Error(w, http.StatusBadRequest, "customer_id tidak valid")
-	// 	return
-	// }
-
-	// Ambil customer ID dari JWT context (atau customerID = customer_user_id)
-	// userID, ok := r.Context().Value("userID").(int64)
-	// if !ok {
-	// 	response.Error(w, http.StatusUnauthorized, "Unauthorized")
-	// 	return
-	// }
 
 	userID, ok := middleware.UserIDFromContext(r.Context()) // <-- Gunakan fungsi helper
 	if !ok {
 		response.Error(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
-
-	// Jika customerID ≠ userID, maka pastikan user punya akses (misalnya via region scope)
-	// Untuk sementara, kita asumsikan customerID = userID
-	// if customerID != userID {
-	// 	response.Error(w, http.StatusForbidden, "tidak memiliki akses")
-	// 	return
-	// }
 
 	input := home.GetDashboardInput{
 		UserID: userID,

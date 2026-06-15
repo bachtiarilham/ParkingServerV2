@@ -13,7 +13,8 @@ import (
 
 type contextKey string
 
-const ContextKeyUserID contextKey = "uid"
+const ContextKeyUserID contextKey = "userid"
+const ContextKeyRoleID contextKey = "roleid"
 
 // JWTAuth memvalidasi Bearer token dan menyimpan userID ke context
 func JWTAuth(secret string) func(http.Handler) http.Handler {
@@ -43,6 +44,8 @@ func JWTAuth(secret string) func(http.Handler) http.Handler {
 			}
 
 			ctx := context.WithValue(r.Context(), ContextKeyUserID, claims.UserID)
+			ctx = context.WithValue(ctx, ContextKeyRoleID, claims.RoleID)
+
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -51,5 +54,10 @@ func JWTAuth(secret string) func(http.Handler) http.Handler {
 // UserIDFromContext mengambil userID dari context hasil middleware
 func UserIDFromContext(ctx context.Context) (int64, bool) {
 	id, ok := ctx.Value(ContextKeyUserID).(int64)
+	return id, ok
+}
+
+func RoleIDFromContext(ctx context.Context) (int64, bool) {
+	id, ok := ctx.Value(ContextKeyRoleID).(int64)
 	return id, ok
 }

@@ -32,4 +32,6 @@ type Repository interface {
 
 	// EndParkingSession mengakhiri sesi parkir
 	EndParkingSession(ctx context.Context, sessionID int64, endedAt time.Time) error
+
+	UpdatePaymentEventStatus(ctx context.Context, eventID int64, status string, settledAt, failedAt *time.Time) error
 }

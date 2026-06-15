@@ -15,8 +15,8 @@ type Claims struct {
 	Expiration int64  `json:"exp"`
 	IssuedAt   int64  `json:"iat,omitempty"`
 	Type       string `json:"typ,omitempty"`
-	Role       string `json:"role,omitempty"`
-	UserID     int64  `json:"uid,omitempty"`
+	RoleID     int64  `json:"roleid,omitempty"`
+	UserID     int64  `json:"userid,omitempty"`
 	TokenType  string `json:"token_type,omitempty"`
 }
 

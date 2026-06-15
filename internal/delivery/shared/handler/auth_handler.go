@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"modulegue/internal/delivery/mobile/customer/dto"
+	"modulegue/internal/delivery/shared/dto"
 	auth "modulegue/internal/domain/auth"
 	"modulegue/internal/middleware" // Import middleware untuk userID
 	authuc "modulegue/internal/usecase/auth"
@@ -110,7 +110,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		AuthUser: dto.AuthUser{
 			UserId:   result.UserID,
 			FullName: result.FullName,
-			Role:     result.Role,
+			RoleId:   result.RoleID,
 		},
 		TokenSet: dto.TokenSet{
 			AccessToken:      result.AccessToken,

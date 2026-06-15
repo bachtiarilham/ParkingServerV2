@@ -28,6 +28,7 @@ type FinancialTransaction struct {
 	SessionID                *int64     `json:"session_id,omitempty"` // Reference ke parking_session
 	LocationID               int64      `json:"location_id"`
 	CustomerID               *int64     `json:"customer_id,omitempty"`
+	JukirID                  *int64     `json:"jukir_id,omitempty"` // Jika ada jukir yang memproses
 	SubtotalAmount           int64      `json:"subtotal_amount"`
 	FinalAmount              int64      `json:"final_amount"` // Sudah termasuk diskon/penalty
 	CurrencyCode             string     `json:"currency_code"`
@@ -36,6 +37,10 @@ type FinancialTransaction struct {
 	OccurredAt               time.Time  `json:"occurred_at"`
 	CreatedAt                time.Time  `json:"created_at"`
 	SuccessfulPaymentEventID *int64     `json:"successful_payment_event_id,omitempty"` // Reference ke payment_event
+	GovShare                 int64      `json:"gov_share"`                             // Jika ada pembagian hasil
+	CompanyShare             int64      `json:"company_share"`                         // Jika ada pembagian hasil
+	JukirShare               int64      `json:"jukir_share"`                           // Jika ada pembagian hasil
+	PaymentMethod            string     `json:"payment_method,omitempty"`              // qris, virtual_account, etc
 }
 
 // PaymentEvent mewakili event pembayaran dari gateway
@@ -56,4 +61,26 @@ type PaymentEvent struct {
 	PaymentChannelName  string     `json:"payment_channel_name"`         // qris, virtual_account
 	ProviderReference   string     `json:"provider_reference,omitempty"` // VA number, QRIS string
 	ChannelCode         string     `json:"channel_code,omitempty"`       // bca_va, gopay_qris
+}
+
+// PaymentIntent (mungkin tidak digunakan langsung di alur ini, tapi bisa untuk referensi)
+type PaymentIntent struct {
+	ID            int64     `json:"id"`
+	Code          string    `json:"code"`
+	TransactionID int64     `json:"transaction_id"`
+	Amount        int64     `json:"amount"`
+	CurrencyCode  string    `json:"currency_code"`
+	Status        string    `json:"status"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+// PaymentCallbackPayload (untuk callback, tidak digunakan di handler initiate payment)
+type PaymentCallbackPayload struct {
+	EventID          string `json:"event_id"`
+	EventType        string `json:"event_type"`
+	ReferenceCode    string `json:"reference_code"`
+	Status           string `json:"status"`
+	GatewayReference string `json:"gateway_reference"`
+	GrossAmount      int64  `json:"gross_amount"`
 }

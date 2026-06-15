@@ -26,7 +26,7 @@ type LoginRequest struct {
 type LoginResponse struct {
 	UserID       int64
 	FullName     string
-	Role         int64
+	RoleID       int64
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 	ExpiresAt    int64  `json:"expires_at"`
@@ -88,6 +88,7 @@ func (uc *LoginUseCase) Execute(ctx context.Context, req LoginRequest) (LoginRes
 	refreshToken, err := jwt.SignHS256(jwt.Claims{
 		Subject:    fmt.Sprintf("%d", u.ID),
 		UserID:     u.ID,
+		RoleID:     u.RoleID,
 		TokenType:  "refresh",
 		Expiration: refreshExp.Unix(),
 		IssuedAt:   now.Unix(),
@@ -110,7 +111,7 @@ func (uc *LoginUseCase) Execute(ctx context.Context, req LoginRequest) (LoginRes
 	return LoginResponse{
 		UserID:       u.ID,
 		FullName:     u.FullName,
-		Role:         u.RoleID,
+		RoleID:       u.RoleID,
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		ExpiresAt:    accessExp.Unix(),
