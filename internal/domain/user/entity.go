@@ -20,3 +20,14 @@ type User struct {
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 }
+
+type Record struct {
+	ID           int64
+	FullName     string
+	PhoneNumber  string
+	Email        string
+	Username     string
+	RoleCode     string
+	PasswordHash string
+	IsVerified   bool
+}
