@@ -18,12 +18,12 @@ var (
 	ErrUserNotFound       = errors.New("user tidak ditemukan")
 )
 
-type LoginRequest struct {
+type LoginInput struct {
 	Identity string
 	Password string
 }
 
-type LoginResponse struct {
+type LoginOuput struct {
 	UserID       int64
 	FullName     string
 	RoleID       int64
@@ -56,16 +56,16 @@ func NewLoginUseCase(
 	}
 }
 
-func (uc *LoginUseCase) Execute(ctx context.Context, req LoginRequest) (LoginResponse, error) {
+func (uc *LoginUseCase) Execute(ctx context.Context, req LoginInput) (LoginOuput, error) {
 	// 1. Cari user berdasarkan identity
 	u, err := uc.userRepo.FindByEmail(ctx, req.Identity)
 	if err != nil {
-		return LoginResponse{}, ErrInvalidCredentials
+		return LoginOuput{}, ErrInvalidCredentials
 	}
 
 	// 2. Verifikasi password
 	if err := hash.Compare(u.PasswordHash, req.Password); err != nil {
-		return LoginResponse{}, ErrInvalidCredentials
+		return LoginOuput{}, ErrInvalidCredentials
 	}
 
 	now := time.Now()
@@ -80,7 +80,7 @@ func (uc *LoginUseCase) Execute(ctx context.Context, req LoginRequest) (LoginRes
 		Type:       "access",
 	}, uc.jwtSecret)
 	if err != nil {
-		return LoginResponse{}, fmt.Errorf("generate access token: %w", err)
+		return LoginOuput{}, fmt.Errorf("generate access token: %w", err)
 	}
 
 	// 4. Buat refresh token (TTL lebih panjang, tanpa expiry di payload — dicek dari DB)
@@ -95,7 +95,7 @@ func (uc *LoginUseCase) Execute(ctx context.Context, req LoginRequest) (LoginRes
 		Type:       "refresh",
 	}, uc.jwtSecret)
 	if err != nil {
-		return LoginResponse{}, fmt.Errorf("generate refresh token: %w", err)
+		return LoginOuput{}, fmt.Errorf("generate refresh token: %w", err)
 	}
 
 	// 5. Simpan session ke DB
@@ -105,10 +105,10 @@ func (uc *LoginUseCase) Execute(ctx context.Context, req LoginRequest) (LoginRes
 		RefreshToken: refreshToken,
 		ExpiresAt:    refreshExp,
 	}); err != nil {
-		return LoginResponse{}, fmt.Errorf("save session: %w", err)
+		return LoginOuput{}, fmt.Errorf("save session: %w", err)
 	}
 
-	return LoginResponse{
+	return LoginOuput{
 		UserID:       u.ID,
 		FullName:     u.FullName,
 		RoleID:       u.RoleID,

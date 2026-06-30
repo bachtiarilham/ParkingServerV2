@@ -39,11 +39,31 @@ func (h *HomeHandler) GetDashboard(w http.ResponseWriter, r *http.Request) {
 
 	// Mapping ke DTO
 	resp := dto.HomeResponse{
-		Profile:  nil,
-		Summary:  nil,
-		Events:   []dto.EventDto{},
-		News:     []dto.NewsDto{},
-		Warnings: nil,
+		Greeting: &dto.GreetingDto{
+			Title:       result.Greeting.Title,
+			Subtitle:    result.Greeting.Subtitle,
+			AvatarLabel: result.Greeting.AvatarLabel,
+		},
+		BalanceCard: &dto.BalanceCardDto{
+			Label:        result.BalanceCard.Label,
+			Amount:       result.BalanceCard.Amount,
+			PrimaryCta:   result.BalanceCard.PrimaryCta,
+			SecondaryCta: result.BalanceCard.SecondaryCta,
+		},
+		PremiumCard: &dto.PremiumCardDto{
+			Title:       result.PremiumCard.Title,
+			Description: result.PremiumCard.Description,
+			CtaLabel:    result.PremiumCard.CtaLabel,
+			Badge:       result.PremiumCard.Badge,
+		},
+		Shortcuts:        []dto.ShortcutDto{},
+		RecentActivities: []dto.ActivityDto{},
+		Promotions:       []dto.PromotionDto{},
+		Profile:          nil,
+		Summary:          nil,
+		Events:           []dto.EventDto{},
+		News:             []dto.NewsDto{},
+		Warnings:         nil,
 	}
 
 	if result.Profile != nil {
@@ -56,6 +76,28 @@ func (h *HomeHandler) GetDashboard(w http.ResponseWriter, r *http.Request) {
 		resp.Summary = &dto.SummaryDto{
 			Saldo: result.Summary.Saldo,
 		}
+	}
+	for _, sc := range result.Shortcuts {
+		resp.Shortcuts = append(resp.Shortcuts, dto.ShortcutDto{
+			Title:    sc.Title,
+			Icon:     sc.Icon,
+			DeepLink: sc.DeepLink,
+		})
+	}
+	for _, act := range result.RecentActivities {
+		resp.RecentActivities = append(resp.RecentActivities, dto.ActivityDto{
+			Title:       act.Title,
+			Subtitle:    act.Subtitle,
+			Status:      act.Status,
+			ActionLabel: act.ActionLabel,
+		})
+	}
+	for _, promo := range result.Promotions {
+		resp.Promotions = append(resp.Promotions, dto.PromotionDto{
+			Title:       promo.Title,
+			Description: promo.Description,
+			Badge:       promo.Badge,
+		})
 	}
 	for _, ev := range result.Events {
 		resp.Events = append(resp.Events, dto.EventDto{

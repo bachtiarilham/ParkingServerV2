@@ -89,7 +89,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	request := authuc.LoginRequest{
+	request := authuc.LoginInput{
 		Identity: req.Identity,
 		Password: req.Password,
 	}

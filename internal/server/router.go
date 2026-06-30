@@ -11,6 +11,7 @@ import (
 	"modulegue/config"
 	"modulegue/internal/delivery/mobile/customer"
 	"modulegue/internal/delivery/mobile/jukir"
+	webdelivery "modulegue/internal/delivery/web"
 	"modulegue/internal/repository"
 	pay_svc "modulegue/internal/service/payment_gateway"
 	authuc "modulegue/internal/usecase/auth"
@@ -125,9 +126,7 @@ func NewRouter(
 		logger,
 	)
 
-	// Tambahkan routes untuk desktop, web jika ada
-	// desktop.RegisterRoutes(...)
-	// web.RegisterRoutes(...)
+	webdelivery.RegisterRoutes(mux, cfg, db, queue, logger)
 
 	return mux, workerPool
 }

@@ -1,0 +1,193 @@
+package web
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+
+	"modulegue/internal/domain/auth"
+	"modulegue/internal/domain/dashboard"
+	"modulegue/pkg/hash"
+	"modulegue/pkg/jwt"
+)
+
+var (
+	ErrInvalidCredentials = errors.New("kredensial tidak valid")
+	ErrForbiddenRole      = errors.New("role tidak diizinkan")
+	ErrInvalidRefreshToken = errors.New("refresh token tidak valid")
+	ErrExpiredRefreshToken = errors.New("refresh token sudah kadaluarsa")
+)
+
+type AuthUseCase struct {
+	repo       dashboard.Repository
+	authRepo   auth.Repository
+	jwtSecret  string
+	accessTTL  time.Duration
+	refreshTTL time.Duration
+}
+
+func NewAuthUseCase(
+	repo dashboard.Repository,
+	authRepo auth.Repository,
+	jwtSecret string,
+	accessTTL time.Duration,
+	refreshTTL time.Duration,
+) *AuthUseCase {
+	return &AuthUseCase{
+		repo:       repo,
+		authRepo:   authRepo,
+		jwtSecret:  jwtSecret,
+		accessTTL:  accessTTL,
+		refreshTTL: refreshTTL,
+	}
+}
+
+func (uc *AuthUseCase) Login(ctx context.Context, input dashboard.LoginRequest) (dashboard.AuthEnvelope, error) {
+	admin, err := uc.repo.FindAdminByIdentity(ctx, input.Identity)
+	if err != nil {
+		return dashboard.AuthEnvelope{}, ErrInvalidCredentials
+	}
+	if !isAdminRole(admin.RoleCode) {
+		return dashboard.AuthEnvelope{}, ErrForbiddenRole
+	}
+	if !admin.IsVerified {
+		return dashboard.AuthEnvelope{}, ErrForbiddenRole
+	}
+	if err := hash.Compare(admin.PasswordHash, input.Password); err != nil {
+		return dashboard.AuthEnvelope{}, ErrInvalidCredentials
+	}
+
+	now := time.Now()
+	accessExpiry := now.Add(uc.accessTTL)
+	refreshExpiry := now.Add(uc.refreshTTL)
+
+	accessToken, err := jwt.SignHS256(jwt.Claims{
+		Subject:    fmt.Sprintf("%d", admin.ID),
+		UserID:     admin.ID,
+		RoleID:     admin.RoleID,
+		Expiration: accessExpiry.Unix(),
+		IssuedAt:   now.Unix(),
+		Type:       "access",
+	}, uc.jwtSecret)
+	if err != nil {
+		return dashboard.AuthEnvelope{}, fmt.Errorf("generate access token: %w", err)
+	}
+
+	refreshToken, err := jwt.SignHS256(jwt.Claims{
+		Subject:    fmt.Sprintf("%d", admin.ID),
+		UserID:     admin.ID,
+		RoleID:     admin.RoleID,
+		Expiration: refreshExpiry.Unix(),
+		IssuedAt:   now.Unix(),
+		Type:       "refresh",
+	}, uc.jwtSecret)
+	if err != nil {
+		return dashboard.AuthEnvelope{}, fmt.Errorf("generate refresh token: %w", err)
+	}
+
+	if err := uc.authRepo.SaveSession(ctx, auth.Session{
+		UserID:       admin.ID,
+		TokenType:    "JWT",
+		RefreshToken: refreshToken,
+		ExpiresAt:    refreshExpiry,
+	}); err != nil {
+		return dashboard.AuthEnvelope{}, fmt.Errorf("save session: %w", err)
+	}
+
+	return toAuthEnvelope(*admin, accessToken, refreshToken, int64(time.Until(accessExpiry).Seconds())), nil
+}
+
+func (uc *AuthUseCase) Refresh(ctx context.Context, input dashboard.RefreshTokenRequest) (dashboard.AuthEnvelope, error) {
+	refreshToken := strings.TrimSpace(input.RefreshToken)
+	if refreshToken == "" {
+		return dashboard.AuthEnvelope{}, ErrInvalidRefreshToken
+	}
+
+	session, err := uc.authRepo.FindSessionByRefreshToken(ctx, refreshToken)
+	if err != nil {
+		return dashboard.AuthEnvelope{}, ErrInvalidRefreshToken
+	}
+	if session.IsExpired() {
+		_ = uc.authRepo.DeleteSession(ctx, refreshToken)
+		return dashboard.AuthEnvelope{}, ErrExpiredRefreshToken
+	}
+
+	admin, err := uc.repo.FindAdminByID(ctx, session.UserID)
+	if err != nil {
+		return dashboard.AuthEnvelope{}, ErrInvalidRefreshToken
+	}
+	if !isAdminRole(admin.RoleCode) {
+		return dashboard.AuthEnvelope{}, ErrForbiddenRole
+	}
+
+	_ = uc.authRepo.DeleteSession(ctx, refreshToken)
+
+	now := time.Now()
+	accessExpiry := now.Add(uc.accessTTL)
+	refreshExpiry := now.Add(uc.refreshTTL)
+
+	accessToken, err := jwt.SignHS256(jwt.Claims{
+		Subject:    fmt.Sprintf("%d", admin.ID),
+		UserID:     admin.ID,
+		RoleID:     admin.RoleID,
+		Expiration: accessExpiry.Unix(),
+		IssuedAt:   now.Unix(),
+		Type:       "access",
+	}, uc.jwtSecret)
+	if err != nil {
+		return dashboard.AuthEnvelope{}, fmt.Errorf("generate access token: %w", err)
+	}
+
+	newRefreshToken, err := jwt.SignHS256(jwt.Claims{
+		Subject:    fmt.Sprintf("%d", admin.ID),
+		UserID:     admin.ID,
+		RoleID:     admin.RoleID,
+		Expiration: refreshExpiry.Unix(),
+		IssuedAt:   now.Unix(),
+		Type:       "refresh",
+	}, uc.jwtSecret)
+	if err != nil {
+		return dashboard.AuthEnvelope{}, fmt.Errorf("generate refresh token: %w", err)
+	}
+
+	if err := uc.authRepo.SaveSession(ctx, auth.Session{
+		UserID:       admin.ID,
+		TokenType:    "JWT",
+		RefreshToken: newRefreshToken,
+		ExpiresAt:    refreshExpiry,
+	}); err != nil {
+		return dashboard.AuthEnvelope{}, fmt.Errorf("save session: %w", err)
+	}
+
+	return toAuthEnvelope(*admin, accessToken, newRefreshToken, int64(time.Until(accessExpiry).Seconds())), nil
+}
+
+func isAdminRole(roleCode string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(roleCode))
+	if normalized == "" {
+		return false
+	}
+	return strings.HasPrefix(normalized, "admin_") || normalized == "super_admin" || normalized == "admin"
+}
+
+func toAuthEnvelope(admin dashboard.AuthRecord, accessToken, refreshToken string, expiresInSeconds int64) dashboard.AuthEnvelope {
+	return dashboard.AuthEnvelope{
+		User: dashboard.AuthUser{
+			UserID:     admin.ID,
+			FullName:   admin.FullName,
+			Phone:      admin.PhoneNumber,
+			Email:      admin.Email,
+			Username:   admin.Username,
+			Role:       admin.RoleCode,
+			IsVerified: admin.IsVerified,
+		},
+		Tokens: dashboard.TokenSet{
+			AccessToken:      accessToken,
+			RefreshToken:     refreshToken,
+			TokenType:        "Bearer",
+			ExpiresInSeconds: expiresInSeconds,
+		},
+	}
+}
