@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"strings"
 
-	"modulegue/pkg/jwt"
-	"modulegue/pkg/response"
+	"modulegue/core/jwt"
+	"modulegue/core/response"
 )
 
 type contextKey string

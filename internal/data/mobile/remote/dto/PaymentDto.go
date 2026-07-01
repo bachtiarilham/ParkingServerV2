@@ -1,6 +1,6 @@
 package dto
 
-type SubmitQrRequestDto struct {
+type SubmitQrRequestDtoUsang struct {
 	ScannedQrString string `json:"scanned_qr_string"`
 }
 

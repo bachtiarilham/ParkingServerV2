@@ -1,13 +1,11 @@
 package mapper
 
 import (
-	"strconv"
-
-	dto "modulegue/internal/data/mobile/remote/dto"
-	homeusecase "modulegue/internal/usecase/home"
+	"modulegue/internal/data/mobile/remote/dto"
+	"modulegue/internal/domain/mobile/model"
 )
 
-func ToHomeResponse(result *homeusecase.GetDashboardOutput) *dto.HomeResponseDto {
+func ToHomeResponse(result *model.HomeModel) *dto.HomeResponseDto {
 	if result == nil {
 		return &dto.HomeResponseDto{
 			Events: []dto.EventDto{},
@@ -22,7 +20,7 @@ func ToHomeResponse(result *homeusecase.GetDashboardOutput) *dto.HomeResponseDto
 
 	if result.Profile != nil {
 		resp.Profile = &dto.ProfileDto{
-			Id:   strconv.FormatInt(result.Profile.ID, 10),
+			Id:   result.Profile.ID,
 			Name: result.Profile.Name,
 		}
 	}
@@ -45,7 +43,7 @@ func ToHomeResponse(result *homeusecase.GetDashboardOutput) *dto.HomeResponseDto
 
 	for _, ev := range result.Events {
 		resp.Events = append(resp.Events, dto.EventDto{
-			Id:          strconv.FormatInt(ev.ID, 10),
+			Id:          ev.ID,
 			Title:       ev.Title,
 			Description: ev.Description,
 			Date:        ev.Date.Format("2006-01-02T15:04:05Z"),
@@ -56,7 +54,7 @@ func ToHomeResponse(result *homeusecase.GetDashboardOutput) *dto.HomeResponseDto
 
 	for _, nw := range result.News {
 		resp.News = append(resp.News, dto.NewsDto{
-			Id:          strconv.FormatInt(nw.ID, 10),
+			Id:          nw.ID,
 			Title:       nw.Title,
 			Description: nw.Description,
 			Date:        nw.Date.Format("2006-01-02T15:04:05Z"),

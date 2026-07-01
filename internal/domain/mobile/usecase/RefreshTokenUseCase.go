@@ -1,22 +1,16 @@
-package auth
+package usecase
 
 import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"errors"
 	"fmt"
-	domain_auth "modulegue/internal/domain/auth"
+	"modulegue/core/errorstring"
+	"modulegue/core/jwt" // Pastikan kamu punya fungsi untuk generate token
+	"modulegue/internal/domain/mobile/model"
+	"modulegue/internal/domain/mobile/repository"
 	"modulegue/internal/domain/user"
-	"modulegue/pkg/jwt" // Pastikan kamu punya fungsi untuk generate token
 	"time"
-	// "modulegue/pkg/hash" // Jika refresh token di-hash sebelum disimpan
-)
-
-var (
-	ErrInvalidRefreshToken = errors.New("refresh token tidak valid")
-	ErrExpiredRefreshToken = errors.New("refresh token sudah kadaluarsa")
-	// ErrUserNotFound        = errors.New("user tidak ditemukan")
 )
 
 type RefreshTokenInput struct {
@@ -30,53 +24,53 @@ type RefreshTokenOutput struct {
 }
 
 type RefreshTokenUseCase struct {
-	authRepo   domain_auth.Repository
-	userRepo   user.Repository // Butuh untuk verifikasi user aktif
-	jwtSecret  string
-	accessTTL  time.Duration
-	refreshTTL time.Duration
+	sessionRepo repository.SessionRepository
+	userRepo    user.Repository // Butuh untuk verifikasi user aktif
+	jwtSecret   string
+	accessTTL   time.Duration
+	refreshTTL  time.Duration
 }
 
 func NewRefreshTokenUseCase(
-	authRepo domain_auth.Repository,
+	sessionRepo repository.SessionRepository,
 	userRepo user.Repository, // Tambahkan repo user
 	jwtSecret string,
 	accessTTL time.Duration,
 	refreshTTL time.Duration,
 ) *RefreshTokenUseCase {
 	return &RefreshTokenUseCase{
-		authRepo:   authRepo,
-		userRepo:   userRepo, // Simpan repo user
-		jwtSecret:  jwtSecret,
-		accessTTL:  accessTTL,
-		refreshTTL: refreshTTL,
+		sessionRepo: sessionRepo,
+		userRepo:    userRepo, // Simpan repo user
+		jwtSecret:   jwtSecret,
+		accessTTL:   accessTTL,
+		refreshTTL:  refreshTTL,
 	}
 }
 
 func (uc *RefreshTokenUseCase) Execute(ctx context.Context, input RefreshTokenInput) (RefreshTokenOutput, error) {
 	// 1. Cari session berdasarkan refresh token
-	session, err := uc.authRepo.FindSessionByRefreshToken(ctx, input.RefreshToken)
+	session, err := uc.sessionRepo.FindSessionByRefreshToken(ctx, input.RefreshToken)
 	if err != nil {
-		return RefreshTokenOutput{}, ErrInvalidRefreshToken
+		return RefreshTokenOutput{}, errorstring.ErrInvalidRefreshToken
 	}
 
 	// 2. Cek apakah refresh token sudah kadaluarsa
 	if time.Now().After(session.ExpiresAt) {
 		// Hapus session lama jika kadaluarsa
-		uc.authRepo.DeleteSession(ctx, input.RefreshToken) // Log error jika perlu, tapi jangan hentikan proses
-		return RefreshTokenOutput{}, ErrExpiredRefreshToken
+		uc.sessionRepo.DeleteSession(ctx, input.RefreshToken) // Log error jika perlu, tapi jangan hentikan proses
+		return RefreshTokenOutput{}, errorstring.ErrExpiredRefreshToken
 	}
 
 	// 3. Cek apakah user masih aktif (opsional, tapi bagus untuk security)
 	// user, err := uc.userRepo.GetByID(ctx, session.UserID) // Tambahkan method GetByID ke user.Repository
 	// if err != nil || user.EmploymentStatus != "active" {
 	// 	// Jika user tidak ditemukan atau tidak aktif, hapus session dan tolak
-	// 	uc.authRepo.DeleteSession(ctx, input.RefreshToken)
-	// 	return RefreshTokenOutput{}, ErrUserNotFound
+	// 	uc.sessionRepo.DeleteSession(ctx, input.RefreshToken)
+	// 	return RefreshTokenOutput{}, errorstring.ErrUserNotFound
 	// }
 
 	// 4. Hapus session lama (refresh token lama tidak bisa digunakan lagi)
-	err = uc.authRepo.DeleteSession(ctx, input.RefreshToken)
+	err = uc.sessionRepo.DeleteSession(ctx, input.RefreshToken)
 	if err != nil {
 		// Log error, tapi lanjutkan
 		// fmt.Printf("Warning: could not delete old session: %v\n", err)
@@ -106,12 +100,12 @@ func (uc *RefreshTokenUseCase) Execute(ctx context.Context, input RefreshTokenIn
 	}
 
 	// c. Simpan session baru ke database
-	newSession := domain_auth.Session{
+	newSession := model.SessionModel{
 		UserID:       session.UserID,
 		RefreshToken: newRefreshToken, // Gunakan refresh token baru
 		ExpiresAt:    newRefreshExp,
 	}
-	err = uc.authRepo.SaveSession(ctx, newSession)
+	err = uc.sessionRepo.SaveSession(ctx, newSession)
 	if err != nil {
 		return RefreshTokenOutput{}, fmt.Errorf("save new session: %w", err)
 	}

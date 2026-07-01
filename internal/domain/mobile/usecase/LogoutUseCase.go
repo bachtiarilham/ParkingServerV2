@@ -1,12 +1,11 @@
-package auth
+package usecase
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	domain_auth "modulegue/internal/domain/auth"
+	"modulegue/internal/domain/mobile/repository"
 	"modulegue/internal/middleware"
-	// "modulegue/pkg/jwt" // Import pkg jwt kamu
 )
 
 var (
@@ -27,12 +26,12 @@ type LogoutOutput struct {
 }
 
 type LogoutUseCase struct {
-	authRepo domain_auth.Repository
+	sessionRepo repository.SessionRepository
 }
 
-func NewLogoutUseCase(authRepo domain_auth.Repository) *LogoutUseCase {
+func NewLogoutUseCase(sessionRepo repository.SessionRepository) *LogoutUseCase {
 	return &LogoutUseCase{
-		authRepo: authRepo,
+		sessionRepo: sessionRepo,
 	}
 }
 
@@ -58,14 +57,14 @@ func (uc *LogoutUseCase) Execute(ctx context.Context, input LogoutInput) (Logout
 	var err error
 	if input.RefreshToken != "" {
 		// Jika refresh token disediakan, hapus session spesifik
-		err = uc.authRepo.DeleteSession(ctx, input.RefreshToken)
+		err = uc.sessionRepo.DeleteSession(ctx, input.RefreshToken)
 		if err != nil {
 			// Log error jika perlu
 			return LogoutOutput{}, fmt.Errorf("failed to delete specific session: %w", err)
 		}
 	} else {
 		// Jika tidak ada refresh token, hapus semua session untuk user ini (logout dari semua perangkat)
-		err = uc.authRepo.DeleteAllSessions(ctx, userID)
+		err = uc.sessionRepo.DeleteAllSessions(ctx, userID)
 		if err != nil {
 			// Log error jika perlu
 			return LogoutOutput{}, fmt.Errorf("failed to delete all user sessions: %w", err)

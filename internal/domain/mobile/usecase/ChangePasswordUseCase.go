@@ -1,18 +1,11 @@
-package auth
+package usecase
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	domain_auth "modulegue/internal/domain/auth" // Alias untuk menghindari konflik
-	"modulegue/internal/domain/user"
-	"modulegue/pkg/hash" // Gunakan pkg/hash kamu
-)
-
-var (
-	ErrOldPasswordMismatch  = errors.New("password lama tidak cocok")
-	ErrNewPasswordSameAsOld = errors.New("password baru tidak boleh sama dengan password lama")
-	ErrInvalidUserID        = errors.New("user tidak valid")
+	"modulegue/core/errorstring"
+	"modulegue/core/hash"
+	"modulegue/internal/domain/mobile/repository"
 )
 
 type ChangePasswordInput struct {
@@ -26,20 +19,20 @@ type ChangePasswordOutput struct {
 }
 
 type ChangePasswordUseCase struct {
-	userRepo user.Repository
-	authRepo domain_auth.Repository // Tidak digunakan secara langsung untuk password user di sini, karena password ada di user_repo
+	userRepo    repository.UserRepository
+	sessionRepo repository.SessionRepository // Tidak digunakan secara langsung untuk password user di sini, karena password ada di user_repo
 }
 
-func NewChangePasswordUseCase(userRepo user.Repository, authRepo domain_auth.Repository) *ChangePasswordUseCase {
+func NewChangePasswordUseCase(userRepo repository.UserRepository, sessionRepo repository.SessionRepository) *ChangePasswordUseCase {
 	return &ChangePasswordUseCase{
-		userRepo: userRepo,
-		authRepo: authRepo,
+		userRepo:    userRepo,
+		sessionRepo: sessionRepo,
 	}
 }
 
 func (uc *ChangePasswordUseCase) Execute(ctx context.Context, input ChangePasswordInput) (ChangePasswordOutput, error) {
 	// 1. Ambil user dari repository berdasarkan userID dari context
-	currentUser, err := uc.userRepo.FindByID(ctx, input.UserID) // Asumsikan FindByID ada di userRepo
+	currentUser, err := uc.userRepo.GetUser(ctx, input.UserID) // Asumsikan FindByID ada di userRepo
 	if err != nil {
 		// Log error jika perlu
 		return ChangePasswordOutput{}, fmt.Errorf("gagal mengambil data user: %w", err)
@@ -48,12 +41,12 @@ func (uc *ChangePasswordUseCase) Execute(ctx context.Context, input ChangePasswo
 	// 2. Verifikasi apakah OldPassword cocok dengan hash yang disimpan
 	if err := hash.Compare(currentUser.PasswordHash, input.OldPassword); err != nil {
 		// Password lama salah
-		return ChangePasswordOutput{}, ErrOldPasswordMismatch
+		return ChangePasswordOutput{}, errorstring.ErrOldPasswordMismatch
 	}
 
 	// 3. (Opsional) Cegah user mengganti password dengan password lama yang sama
 	if hash.Compare(currentUser.PasswordHash, input.NewPassword) == nil {
-		return ChangePasswordOutput{}, ErrNewPasswordSameAsOld
+		return ChangePasswordOutput{}, errorstring.ErrNewPasswordSameAsOld
 	}
 
 	// 4. Hash password baru
@@ -76,7 +69,7 @@ func (uc *ChangePasswordUseCase) Execute(ctx context.Context, input ChangePasswo
 	// Tapi ini bisa merusak UX jika user sedang aktif di banyak tab/perangkat.
 	// Kita bisa menambahkan opsi ini nanti jika diperlukan.
 	// domain_auth.Repository.DeleteAllSessions(ctx, currentUser.ID)
-	err = uc.authRepo.DeleteAllSessions(ctx, currentUser.ID) // <-- Gunakan uc.authRepo
+	err = uc.sessionRepo.DeleteAllSessions(ctx, currentUser.ID) // <-- Gunakan uc.sessionRepo
 	if err != nil {
 		// Log error, tapi jangan hentikan proses change password krn ini opsional
 		// log.Printf("Gagal hapus session setelah ganti password user %d: %v", currentUser.ID, err)

@@ -10,7 +10,7 @@ type HomeResponseDto struct {
 }
 
 type ProfileDto struct {
-	Id   string `json:"id"`
+	Id   int64  `json:"id"`
 	Name string `json:"name"`
 }
 
@@ -27,7 +27,7 @@ type JukirSummaryDto struct {
 }
 
 type EventDto struct {
-	Id          string `json:"id"`
+	Id          int64  `json:"id"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	Date        string `json:"date"` // String untuk format ISO8601
@@ -36,7 +36,7 @@ type EventDto struct {
 }
 
 type NewsDto struct {
-	Id          string `json:"id"`
+	Id          int64  `json:"id"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	Date        string `json:"date"` // String untuk format ISO8601

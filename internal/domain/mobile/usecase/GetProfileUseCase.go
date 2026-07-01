@@ -1,15 +1,9 @@
-package user
+package usecase
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"modulegue/internal/domain/user" // Import domain user
-)
-
-// Error definitions
-var (
-	ErrUserNotFound = errors.New("user not found")
 )
 
 // GetProfileInput tidak perlu input selain userID dari context

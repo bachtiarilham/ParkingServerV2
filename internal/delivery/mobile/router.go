@@ -21,7 +21,7 @@ func RegisterRoutes(
 	refreshUC *authuc.RefreshTokenUseCase,
 	changePasswordUC *authuc.ChangePasswordUseCase,
 	getUserProfileUC *useruc.GetProfileUseCase,
-	homeUC *homeuc.GetDashboardUseCase,
+	homeUC *homeuc.GetHomeUseCase,
 	q *queue.Queue,
 	logger *log.Logger,
 ) {

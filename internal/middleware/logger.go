@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"modulegue/pkg/logger"
+	"modulegue/core/logger"
 )
 
 type statusRecorder struct {

@@ -7,15 +7,15 @@ import (
 	"strings"
 	"time"
 
+	"modulegue/core/hash"
+	"modulegue/core/jwt"
 	"modulegue/internal/domain/auth"
 	"modulegue/internal/domain/dashboard"
-	"modulegue/pkg/hash"
-	"modulegue/pkg/jwt"
 )
 
 var (
-	ErrInvalidCredentials = errors.New("kredensial tidak valid")
-	ErrForbiddenRole      = errors.New("role tidak diizinkan")
+	ErrInvalidCredentials  = errors.New("kredensial tidak valid")
+	ErrForbiddenRole       = errors.New("role tidak diizinkan")
 	ErrInvalidRefreshToken = errors.New("refresh token tidak valid")
 	ErrExpiredRefreshToken = errors.New("refresh token sudah kadaluarsa")
 )

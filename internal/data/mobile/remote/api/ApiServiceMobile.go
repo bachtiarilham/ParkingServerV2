@@ -32,7 +32,7 @@ func RegisterRoutes(
 	//setting
 	getUserProfileUC *useruc.GetProfileUseCase,
 	//home
-	homeUC *homeuc.GetDashboardUseCase,
+	homeUC *homeuc.GetHomeUseCase,
 	//payment
 	qrUC *qruc.GenerateQRUseCase,
 	initiatePaymentUC *paymentuc.InitiatePaymentUseCase,

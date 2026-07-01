@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"modulegue/pkg/queue"
+	"modulegue/core/queue"
 )
 
 type Processor func(ctx context.Context, payload json.RawMessage) (any, error)
