@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"modulegue/internal/domain/mobile/model"
+	model "modulegue/internal/domain/mobile/model/riwayat"
 )
 
 type RiwayatRepository interface {

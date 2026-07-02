@@ -57,9 +57,9 @@ func (h *RegisterHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// --- Mapping: UseCase Output -> DTO ---
-	resp := dto.RegisterRe   sponseDto{
+	resp := dto.RegisterResponseDto{
 		Message: result.Message,
-		User:  result.User,
+		User:    result.UserID.UserDto,
 	}
 
 	response.Success(w, http.StatusCreated, "registrasi berhasil", resp)

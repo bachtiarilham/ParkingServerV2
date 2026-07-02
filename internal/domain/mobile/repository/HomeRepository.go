@@ -2,11 +2,11 @@ package repository
 
 import (
 	"context"
-	"modulegue/internal/domain/mobile/model"
+	model "modulegue/internal/domain/mobile/model/home"
 )
 
 type HomeRepository interface {
-	GetHome(ctx context.Context) (*model.HomeModel, error)
+	GetHome(ctx context.Context, userId, roleId int64) (*model.HomeModel, error)
 	// GetProfile(ctx context.Context) (*model.Profile, error)
 	// GetSummary(ctx context.Context) (*model.Summary, error)
 	// GetJukirSummary(ctx context.Context) (*model.JukirSummary, error)

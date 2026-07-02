@@ -3,9 +3,9 @@ package repository
 import (
 	"context"
 
-	"modulegue/internal/domain/mobile/model"
+	model "modulegue/internal/domain/mobile/model/laporan"
 )
 
 type LaporanRepository interface {
-	GetLaporan(ctx context.Context, filter model.LaporanFilterRequestModel) (*model.LaporanModel, error)
+	GetLaporan(ctx context.Context, filter model.LaporanRequestModel) (*model.LaporanModel, error)
 }
