@@ -6,6 +6,6 @@ import (
 	"modulegue/internal/domain/mobile/model"
 )
 
-type LokasiRepository interface {
+type GetLokasiRepository interface {
 	GetLokasi(ctx context.Context) (*model.LokasiModel, error)
 }
