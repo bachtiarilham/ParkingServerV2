@@ -6,7 +6,7 @@ import (
 )
 
 type HomeRepository interface {
-	GetHome(ctx context.Context, userId, roleId int64) (*model.HomeModel, error)
+	GetHome(ctx context.Context, reqModel model.GetHomeReqModel) (*model.HomeModel, error)
 	// GetProfile(ctx context.Context) (*model.Profile, error)
 	// GetSummary(ctx context.Context) (*model.Summary, error)
 	// GetJukirSummary(ctx context.Context) (*model.JukirSummary, error)

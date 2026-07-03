@@ -2,11 +2,11 @@ package home
 
 import "time"
 
-type NewsModel struct {
-	News []NewsModel `json:"news"`
-}
+// type NewsModel struct {
+// 	News []NewsItemModel `json:"news"`
+// }
 
-type NewsItemModel struct {
+type NewsModel struct {
 	ID          int64     `json:"id"`
 	Title       string    `json:"title"`
 	Description string    `json:"description"`

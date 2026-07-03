@@ -1,8 +1,8 @@
-package mapper
+package home
 
 import (
 	"modulegue/internal/data/mobile/remote/dto"
-	"modulegue/internal/domain/mobile/model"
+	model "modulegue/internal/domain/mobile/model/home"
 )
 
 func ToHomeResponse(result *model.HomeModel) *dto.HomeResponseDto {
@@ -25,10 +25,10 @@ func ToHomeResponse(result *model.HomeModel) *dto.HomeResponseDto {
 		}
 	}
 
-	if result.Summary != nil {
-		resp.Summary = &dto.SummaryDto{
-			Saldo:       result.Summary.Saldo,
-			ExpiredDate: result.Summary.ExpiredDate,
+	if result.CustomerSummary != nil {
+		resp.CustomerSummary = &dto.CustomerSummaryDto{
+			Saldo:       result.CustomerSummary.Saldo,
+			ExpiredDate: result.CustomerSummary.ExpiredDate,
 		}
 	}
 
@@ -41,26 +41,30 @@ func ToHomeResponse(result *model.HomeModel) *dto.HomeResponseDto {
 		}
 	}
 
-	for _, ev := range result.Events {
-		resp.Events = append(resp.Events, dto.EventDto{
-			Id:          ev.ID,
-			Title:       ev.Title,
-			Description: ev.Description,
-			Date:        ev.Date.Format("2006-01-02T15:04:05Z"),
-			ImageUrl:    ev.ImageURL,
-			Tag:         ev.ContentType,
-		})
+	if result.Events != nil {
+		for _, ev := range result.Events {
+			resp.Events = append(resp.Events, dto.EventDto{
+				Id:          ev.ID,
+				Title:       ev.Title,
+				Description: ev.Description,
+				Date:        ev.Date.Format("2006-01-02T15:04:05Z"),
+				ImageUrl:    ev.ImageURL,
+				Tag:         ev.ContentType,
+			})
+		}
 	}
 
-	for _, nw := range result.News {
-		resp.News = append(resp.News, dto.NewsDto{
-			Id:          nw.ID,
-			Title:       nw.Title,
-			Description: nw.Description,
-			Date:        nw.Date.Format("2006-01-02T15:04:05Z"),
-			ImageUrl:    nw.ImageURL,
-			Tag:         nw.ContentType,
-		})
+	if result.News != nil {
+		for _, ev := range result.News {
+			resp.News = append(resp.News, dto.NewsDto{
+				Id:          ev.ID,
+				Title:       ev.Title,
+				Description: ev.Description,
+				Date:        ev.Date.Format("2006-01-02T15:04:05Z"),
+				ImageUrl:    ev.ImageURL,
+				Tag:         ev.ContentType,
+			})
+		}
 	}
 
 	if result.Warnings != nil {

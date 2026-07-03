@@ -2,11 +2,11 @@ package home
 
 import "time"
 
-type EventsModel struct {
-	Events []EventsItemModel `json:"events"`
-}
+// type EventsModel struct {
+// 	Events []EventsItemModel `json:"events"`
+// }
 
-type EventsItemModel struct {
+type EventsModel struct {
 	ID          int64     `json:"id"`
 	Title       string    `json:"title"`
 	Description string    `json:"description"`

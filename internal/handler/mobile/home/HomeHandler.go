@@ -1,11 +1,12 @@
-package handler
+package home
 
 import (
 	"net/http"
 
 	"modulegue/core/response"
-	"modulegue/internal/data/mobile/remote/mapper"
-	"modulegue/internal/domain/mobile/usecase"
+	mapper "modulegue/internal/data/mobile/remote/mapper/home"
+	model "modulegue/internal/domain/mobile/model/home"
+	usecase "modulegue/internal/domain/mobile/usecase/home"
 	middleware "modulegue/internal/middleware"
 )
 
@@ -26,7 +27,7 @@ func (h *HomeHandler) GetDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	input := usecase.GetHomeInput{
+	input := model.GetHomeReqModel{
 		UserID: userID,
 		RoleID: roleID,
 	}

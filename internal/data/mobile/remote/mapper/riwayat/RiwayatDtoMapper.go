@@ -1,8 +1,8 @@
-package mapper
+package riwayat
 
 import (
 	"modulegue/internal/data/mobile/remote/dto"
-	"modulegue/internal/domain/mobile/model"
+	model "modulegue/internal/domain/mobile/model/laporan"
 )
 
 func ToRiwayatDto(src *model.RiwayatModel) *dto.RiwayatDto {

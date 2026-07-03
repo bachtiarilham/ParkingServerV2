@@ -6,7 +6,6 @@ import (
 	"fmt"
 	model "modulegue/internal/domain/mobile/model/auth"
 	"modulegue/internal/domain/mobile/repository"
-	"modulegue/internal/middleware"
 )
 
 var (
@@ -26,12 +25,7 @@ func NewLogoutUseCase(authRepo repository.AuthRepository) *LogoutUseCase {
 
 func (uc *LogoutUseCase) Execute(ctx context.Context, reqModel model.LogoutReqModel) (*model.LogoutRespModel, error) {
 
-	userID, ok := middleware.UserIDFromContext(ctx) // Gunakan helper dari middleware untuk mengambil userID
-	if !ok {
-		return nil, fmt.Errorf("user not authenticated: %w", ErrLogoutFailed)
-	}
-
-	err := uc.authRepo.LogoutUser(ctx, userID)
+	err := uc.authRepo.LogoutUser(ctx, reqModel)
 	if err != nil {
 		return nil, ErrLogoutFailed
 	}
@@ -44,14 +38,15 @@ func (uc *LogoutUseCase) Execute(ctx context.Context, reqModel model.LogoutReqMo
 			// Log error jika perlu
 			return nil, fmt.Errorf("failed to delete specific session: %w", err)
 		}
-	} else {
-		// Jika tidak ada refresh token, hapus semua session untuk user ini (logout dari semua perangkat)
-		err = uc.authRepo.DeleteAllSessions(ctx, userID)
-		if err != nil {
-			// Log error jika perlu
-			return nil, fmt.Errorf("failed to delete all user sessions: %w", err)
-		}
 	}
+	// else {
+	// 	// Jika tidak ada refresh token, hapus semua session untuk user ini (logout dari semua perangkat)
+	// 	err = uc.authRepo.DeleteAllSessions(ctx, userID)
+	// 	if err != nil {
+	// 		// Log error jika perlu
+	// 		return nil, fmt.Errorf("failed to delete all user sessions: %w", err)
+	// 	}
+	// }
 
 	return &model.LogoutRespModel{
 		Message: "logout berhasil",

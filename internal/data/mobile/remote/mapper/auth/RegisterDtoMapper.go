@@ -1,8 +1,8 @@
-package mapper
+package auth
 
 import (
-	"modulegue/internal/data/mobile/remote/dto"
-	"modulegue/internal/domain/mobile/model"
+	dto "modulegue/internal/data/mobile/remote/dto/auth"
+	model "modulegue/internal/domain/mobile/model/auth"
 )
 
 func ToRegisterRequestModel(src *dto.RegisterRequestDto) *model.RegisterRequestModel {

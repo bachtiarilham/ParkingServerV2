@@ -3,7 +3,6 @@ package auth
 import "time"
 
 type SessionModel struct {
-	ID           int64     `json:"id"`
 	UserID       int64     `json:"user_id"`
 	RefreshToken string    `json:"refresh_token"`
 	TokenType    string    `json:"token_type"`

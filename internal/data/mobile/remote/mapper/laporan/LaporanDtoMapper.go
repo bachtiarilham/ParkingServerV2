@@ -1,8 +1,8 @@
-package mapper
+package laporan
 
 import (
 	"modulegue/internal/data/mobile/remote/dto"
-	"modulegue/internal/domain/mobile/model"
+	model "modulegue/internal/domain/mobile/model/laporan"
 )
 
 func ToLaporanDto(src *model.LaporanModel) *dto.LaporanDto {

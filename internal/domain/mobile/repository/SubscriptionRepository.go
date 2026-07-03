@@ -7,5 +7,5 @@ import (
 )
 
 type SubscriptionRepository interface {
-	GetSubscribe(ctx context.Context) (*model.SubscribeModel, error)
+	GetSubscribe(ctx context.Context, userId int64) (*model.SubscribeModel, error)
 }

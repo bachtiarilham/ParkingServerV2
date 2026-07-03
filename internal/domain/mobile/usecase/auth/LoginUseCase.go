@@ -38,12 +38,12 @@ func NewLoginUseCase(
 }
 
 func (uc *LoginUseCase) Execute(ctx context.Context, reqModel model.LoginRequestModel) (*model.LoginResponseModel, error) {
-	if (reqModel.Username == "" && reqModel.Email == "" && reqModel.Phone == "") || reqModel.Password == "" {
+	if (reqModel.Identity == "") || reqModel.Password == "" {
 		return nil, ErrInvalidInput
 	}
 
 	// 1. Cari user berdasarkan identity
-	hasilLogin, err := uc.authRepo.LoginUser(ctx, reqModel.Username, reqModel.Email, reqModel.Phone, reqModel.Password)
+	hasilLogin, err := uc.authRepo.LoginUser(ctx, reqModel.Identity, reqModel.Password)
 	if err != nil {
 		return nil, errorstring.ErrInvalidCredentials
 	}
@@ -74,7 +74,7 @@ func (uc *LoginUseCase) Execute(ctx context.Context, reqModel model.LoginRequest
 		Subject:    fmt.Sprintf("%d", hasilLogin.UserId),
 		UserID:     hasilLogin.UserId,
 		RoleID:     hasilLogin.RoleId,
-		TokenType:  "refresh",
+		TokenType:  "JWT",
 		Expiration: refreshExp.Unix(),
 		IssuedAt:   now.Unix(),
 		Type:       "refresh",

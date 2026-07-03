@@ -1,12 +1,12 @@
 package dto
 
 type HomeResponseDto struct {
-	Profile      *ProfileDto      `json:"profile"`
-	Summary      *SummaryDto      `json:"summary"`
-	JukirSummary *JukirSummaryDto `json:"jukirSummary"`
-	Events       []EventDto       `json:"events"`
-	News         []NewsDto        `json:"news"`
-	Warnings     *WarningsDto     `json:"warnings"`
+	Profile         *ProfileDto         `json:"profile"`
+	CustomerSummary *CustomerSummaryDto `json:"summary"`
+	JukirSummary    *JukirSummaryDto    `json:"jukirSummary"`
+	Events          []EventDto          `json:"events"`
+	News            []NewsDto           `json:"news"`
+	Warnings        *WarningsDto        `json:"warnings"`
 }
 
 type ProfileDto struct {
@@ -14,7 +14,7 @@ type ProfileDto struct {
 	Name string `json:"name"`
 }
 
-type SummaryDto struct {
+type CustomerSummaryDto struct {
 	Saldo       int64  `json:"saldo"`
 	ExpiredDate string `json:"expiredDate"`
 }

@@ -1,8 +1,8 @@
-package mapper
+package auth
 
 import (
-	"modulegue/internal/data/mobile/remote/dto"
-	"modulegue/internal/domain/mobile/model"
+	dto "modulegue/internal/data/mobile/remote/dto/auth"
+	model "modulegue/internal/domain/mobile/model/auth"
 )
 
 func ToUserDto(src *model.UserModel) *dto.UserDto {
@@ -17,7 +17,7 @@ func ToUserDto(src *model.UserModel) *dto.UserDto {
 		Email:      src.Email,
 		Username:   src.Username,
 		Password:   src.Password,
-		Role:       src.Role,
+		RoleId:     src.RoleId,
 		IsVerified: src.IsVerified,
 		Lokasi:     src.Lokasi,
 		Zona:       src.Zona,

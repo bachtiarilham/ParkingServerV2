@@ -1,8 +1,8 @@
 package mapper
 
 import (
-	"modulegue/internal/data/mobile/remote/dto"
-	"modulegue/internal/domain/mobile/model"
+	dto "modulegue/internal/data/mobile/remote/dto/helper"
+	model "modulegue/internal/domain/mobile/model/helper"
 )
 
 func ToLokasiDto(src *model.LokasiModel) *dto.LokasiDto {
