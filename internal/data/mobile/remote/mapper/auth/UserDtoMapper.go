@@ -2,6 +2,7 @@ package auth
 
 import (
 	dto "modulegue/internal/data/mobile/remote/dto/auth"
+	mapper "modulegue/internal/data/mobile/remote/mapper/helper"
 	model "modulegue/internal/domain/mobile/model/auth"
 )
 
@@ -21,6 +22,6 @@ func ToUserDto(src *model.UserModel) *dto.UserDto {
 		IsVerified: src.IsVerified,
 		Lokasi:     src.Lokasi,
 		Zona:       src.Zona,
-		Tarif:      ToTarifDtos(src.Tarif),
+		Tarif:      mapper.ToTarifDtos(src.Tarif),
 	}
 }

@@ -1,10 +1,6 @@
 package laporan
 
 type LaporanChartBarModel struct {
-	ChartBars []LaporanChartBarItemModel `json:"chart_bars,omitempty"`
-}
-
-type LaporanChartBarItemModel struct {
 	Tanggal         *string  `json:"tanggal,omitempty"`
 	Amount          *int64   `json:"amount,omitempty"`
 	Value           *float64 `json:"value,omitempty"`

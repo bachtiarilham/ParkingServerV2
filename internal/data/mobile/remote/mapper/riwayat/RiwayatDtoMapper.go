@@ -1,8 +1,8 @@
 package riwayat
 
 import (
-	"modulegue/internal/data/mobile/remote/dto"
-	model "modulegue/internal/domain/mobile/model/laporan"
+	dto "modulegue/internal/data/mobile/remote/dto/riwayat"
+	model "modulegue/internal/domain/mobile/model/riwayat"
 )
 
 func ToRiwayatDto(src *model.RiwayatModel) *dto.RiwayatDto {

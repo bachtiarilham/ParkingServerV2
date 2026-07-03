@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"modulegue/core/response"
-	mapper "modulegue/internal/data/mobile/remote/mapper"
+	mapper "modulegue/internal/data/mobile/remote/mapper/helper"
 	usecase "modulegue/internal/domain/mobile/usecase/helper"
 )
 

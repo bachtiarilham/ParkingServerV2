@@ -6,7 +6,6 @@ import (
 
 	model "modulegue/internal/domain/mobile/model/subscription"
 	"modulegue/internal/domain/mobile/repository"
-	"modulegue/internal/middleware"
 )
 
 type SubscriptionUseCase struct {
@@ -21,13 +20,9 @@ func NewSubscriptionUseCase(
 	}
 }
 
-func (uc *SubscriptionUseCase) Execute(ctx context.Context) (*model.SubscribeModel, error) {
-	userID, ok := middleware.UserIDFromContext(ctx)
-	if !ok {
-		return nil, fmt.Errorf("user not authenticated")
-	}
+func (uc *SubscriptionUseCase) Execute(ctx context.Context, userId, roleId int64) (*model.SubscribeModel, error) {
 
-	result, err := uc.subsRepo.GetSubscribe(ctx, userID)
+	result, err := uc.subsRepo.GetSubscribe(ctx, userId)
 	if err != nil {
 		return nil, fmt.Errorf("get subscription: %w", err)
 	}

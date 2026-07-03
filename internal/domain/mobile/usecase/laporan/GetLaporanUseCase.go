@@ -46,20 +46,20 @@ func (uc *GetLaporanUseCase) Execute(ctx context.Context, reqModel model.Laporan
 
 	if result == nil {
 		return &model.LaporanModel{
-			ChartBars:          &model.LaporanChartBarModel{ChartBars: []model.LaporanChartBarItemModel{}},
-			PaymentSummaries:   &model.LaporanPaymentSummaryModel{PaymentSummaries: []model.LaporanPaymentSummaryItemModel{}},
-			RecentTransactions: &model.LaporanRecentTransactionModel{RecentTransactions: []model.LaporanRecentTransactionItemModel{}},
+			ChartBars:          []model.LaporanChartBarModel{},
+			PaymentSummaries:   []model.LaporanPaymentSummaryModel{},
+			RecentTransactions: []model.LaporanRecentTransactionModel{},
 		}, nil
 	}
 
 	if result.ChartBars == nil {
-		result.ChartBars = &model.LaporanChartBarModel{ChartBars: []model.LaporanChartBarItemModel{}}
+		result.ChartBars = []model.LaporanChartBarModel{}
 	}
 	if result.PaymentSummaries == nil {
-		result.PaymentSummaries = &model.LaporanPaymentSummaryModel{PaymentSummaries: []model.LaporanPaymentSummaryItemModel{}}
+		result.PaymentSummaries = []model.LaporanPaymentSummaryModel{}
 	}
 	if result.RecentTransactions == nil {
-		result.RecentTransactions = &model.LaporanRecentTransactionModel{RecentTransactions: []model.LaporanRecentTransactionItemModel{}}
+		result.RecentTransactions = []model.LaporanRecentTransactionModel{}
 	}
 
 	return result, nil

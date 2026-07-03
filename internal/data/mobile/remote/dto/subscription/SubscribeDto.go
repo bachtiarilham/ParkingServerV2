@@ -1,6 +1,6 @@
-package dto
+package subscription
 
-type SubscribeDto struct {
+type SubscriptionDto struct {
 	StatusCard  *StatusCardDto   `json:"status_card,omitempty"`
 	PackageCard []PackageCardDto `json:"package_card,omitempty"`
 	Promo       []PromoDto       `json:"promo,omitempty"`

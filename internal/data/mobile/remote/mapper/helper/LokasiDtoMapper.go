@@ -1,4 +1,4 @@
-package mapper
+package helper
 
 import (
 	dto "modulegue/internal/data/mobile/remote/dto/helper"

@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"modulegue/config"
+	"modulegue/core/queue"
 	"modulegue/database"
 	"modulegue/internal/middleware"
 	"modulegue/internal/server"
-	"modulegue/pkg/queue"
 )
 
 func main() {

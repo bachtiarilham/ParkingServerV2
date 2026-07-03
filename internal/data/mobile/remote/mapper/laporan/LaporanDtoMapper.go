@@ -1,7 +1,7 @@
 package laporan
 
 import (
-	"modulegue/internal/data/mobile/remote/dto"
+	dto "modulegue/internal/data/mobile/remote/dto/laporan"
 	model "modulegue/internal/domain/mobile/model/laporan"
 )
 

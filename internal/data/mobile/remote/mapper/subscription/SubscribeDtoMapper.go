@@ -1,15 +1,15 @@
-package mapper
+package subscription
 
 import (
-	"modulegue/internal/data/mobile/remote/dto"
-	"modulegue/internal/domain/mobile/model"
+	dto "modulegue/internal/data/mobile/remote/dto/subscription"
+	model "modulegue/internal/domain/mobile/model/subscription"
 )
 
-func ToSubscribeDto(src *model.SubscribeModel) *dto.SubscribeDto {
+func ToSubscribeDto(src *model.SubscribeModel) *dto.SubscriptionDto {
 	if src == nil {
 		return nil
 	}
-	out := &dto.SubscribeDto{
+	out := &dto.SubscriptionDto{
 		StatusCard:  ToStatusCardDto(src.StatusCard),
 		PackageCard: make([]dto.PackageCardDto, 0, len(src.PackageCard)),
 		Promo:       make([]dto.PromoDto, 0, len(src.Promo)),

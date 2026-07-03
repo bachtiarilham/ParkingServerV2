@@ -1,4 +1,4 @@
-package dto
+package riwayat
 
 type RiwayatRequestDto struct {
 	UserID      int64  `json:"user_id"`

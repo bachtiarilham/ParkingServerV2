@@ -1,4 +1,4 @@
-package dto
+package laporan
 
 type LaporanFilterRequestDto struct {
 	UserID    int64  `json:"user_id"`

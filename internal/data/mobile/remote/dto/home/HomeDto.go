@@ -1,4 +1,4 @@
-package dto
+package home
 
 type HomeResponseDto struct {
 	Profile         *ProfileDto         `json:"profile"`

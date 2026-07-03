@@ -1,7 +1,7 @@
 package home
 
 import (
-	"modulegue/internal/data/mobile/remote/dto"
+	dto "modulegue/internal/data/mobile/remote/dto/home"
 	model "modulegue/internal/domain/mobile/model/home"
 )
 
