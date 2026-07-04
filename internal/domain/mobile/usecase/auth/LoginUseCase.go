@@ -15,6 +15,7 @@ import (
 
 type LoginUseCase struct {
 	authRepo     repository.AuthRepository
+	sessionRepo  repository.SessionRepository
 	sessionModel model.SessionModel
 	jwtSecret    string
 	accessTTL    time.Duration
@@ -23,6 +24,7 @@ type LoginUseCase struct {
 
 func NewLoginUseCase(
 	authRepo repository.AuthRepository,
+	sessionRepo repository.SessionRepository,
 	sessionModel model.SessionModel,
 	jwtSecret string,
 	accessTTL time.Duration,
@@ -30,6 +32,7 @@ func NewLoginUseCase(
 ) *LoginUseCase {
 	return &LoginUseCase{
 		authRepo:     authRepo,
+		sessionRepo:  sessionRepo,
 		sessionModel: sessionModel,
 		jwtSecret:    jwtSecret,
 		accessTTL:    accessTTL,
@@ -84,7 +87,7 @@ func (uc *LoginUseCase) Execute(ctx context.Context, reqModel model.LoginRequest
 	}
 
 	// 5. Simpan session ke DB
-	if err := uc.authRepo.SaveSession(ctx, model.SessionModel{
+	if err := uc.sessionRepo.SaveSession(ctx, model.SessionModel{
 		UserID:       hasilLogin.UserId,
 		TokenType:    "JWT",
 		RefreshToken: refreshToken,

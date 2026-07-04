@@ -11,12 +11,17 @@ import (
 )
 
 type ChangePasswordUseCase struct {
-	authRepo repository.AuthRepository
+	authRepo    repository.AuthRepository
+	sessionRepo repository.SessionRepository
 }
 
-func NewChangePasswordUseCase(userRepo repository.AuthRepository, sessionRepo repository.AuthRepository) *ChangePasswordUseCase {
+func NewChangePasswordUseCase(
+	authRepo repository.AuthRepository,
+	sessionRepo repository.SessionRepository,
+) *ChangePasswordUseCase {
 	return &ChangePasswordUseCase{
-		authRepo: userRepo,
+		authRepo:    authRepo,
+		sessionRepo: sessionRepo,
 	}
 }
 
@@ -62,7 +67,7 @@ func (uc *ChangePasswordUseCase) Execute(ctx context.Context, reqModel model.Cha
 	// Tapi ini bisa merusak UX jika user sedang aktif di banyak tab/perangkat.
 	// Kita bisa menambahkan opsi ini nanti jika diperlukan.
 	// domain_auth.Repository.DeleteAllSessions(ctx, currentUser.ID)
-	err = uc.authRepo.DeleteAllSessions(ctx, currentUser.UserId) // <-- Gunakan uc.sessionRepo
+	err = uc.sessionRepo.DeleteAllSessions(ctx, currentUser.UserId) // <-- Gunakan uc.sessionRepo
 	if err != nil {
 		// Log error, tapi jangan hentikan proses change password krn ini opsional
 		// log.Printf("Gagal hapus session setelah ganti password user %d: %v", currentUser.ID, err)

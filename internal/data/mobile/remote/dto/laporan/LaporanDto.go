@@ -9,7 +9,7 @@ type LaporanFilterRequestDto struct {
 	Lokasi    string `json:"lokasi"`
 }
 
-type LaporanDto struct {
+type LaporanResponseDto struct {
 	TanggalTerpilih    *string                       `json:"tanggal_terpilih,omitempty"`
 	Periode            *LaporanDateRangeDto          `json:"periode,omitempty"`
 	Summary            *LaporanSummaryDto            `json:"summary,omitempty"`

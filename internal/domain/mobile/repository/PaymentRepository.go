@@ -7,6 +7,7 @@ import (
 )
 
 type PaymentRepository interface {
-	Submit(ctx context.Context, req model.SubmitQrRequestModel) (*model.PembayaranModel, error)
-	GetPembayaran(ctx context.Context, sessionId int64) (*model.PembayaranModel, error)
+	PostParking(ctx context.Context, req model.PostParkingRequestModel) (*model.PostParkingResponseModel, error)
+	PostPaymentParking(ctx context.Context, req model.PostPaymentParkingRequestModel) (*model.PostPaymentParkingResponseModel, error)
+	GetPembayaranStatus(ctx context.Context, sessionId string) (*model.PostPaymentParkingResponseModel, error)
 }

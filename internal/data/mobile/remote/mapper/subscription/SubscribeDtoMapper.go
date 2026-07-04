@@ -5,11 +5,11 @@ import (
 	model "modulegue/internal/domain/mobile/model/subscription"
 )
 
-func ToSubscribeDto(src *model.SubscribeModel) *dto.SubscriptionDto {
+func ToSubscribeDto(src *model.SubscribeModel) *dto.SubscriptionResponseDto {
 	if src == nil {
 		return nil
 	}
-	out := &dto.SubscriptionDto{
+	out := &dto.SubscriptionResponseDto{
 		StatusCard:  ToStatusCardDto(src.StatusCard),
 		PackageCard: make([]dto.PackageCardDto, 0, len(src.PackageCard)),
 		Promo:       make([]dto.PromoDto, 0, len(src.Promo)),

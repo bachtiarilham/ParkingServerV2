@@ -1,15 +1,15 @@
-package mapper
+package payment
 
 import (
-	"modulegue/internal/data/mobile/remote/dto"
-	"modulegue/internal/domain/mobile/model"
+	dto "modulegue/internal/data/mobile/remote/dto/payment"
+	model "modulegue/internal/domain/mobile/model/payment"
 )
 
-func ToPembayaranDto(src *model.PembayaranModel) *dto.PembayaranDto {
+func ToPembayaranDto(src *model.PostParkingResponseModel) *dto.PostParkingResponseDto {
 	if src == nil {
 		return nil
 	}
-	out := &dto.PembayaranDto{
+	out := &dto.PostParkingResponseDto{
 		Title:               src.Title,
 		StatusCard:          ToPembayaranStatusCardDto(src.StatusCard),
 		TotalPembayaran:     src.TotalPembayaran,

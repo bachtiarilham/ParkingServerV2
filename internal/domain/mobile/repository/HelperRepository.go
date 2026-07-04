@@ -8,5 +8,4 @@ import (
 
 type HelperRepository interface {
 	GetLokasi(ctx context.Context) (*model.LokasiModel, error)
-	GetTarif(ctx context.Context) (*model.TarifModel, error)
 }

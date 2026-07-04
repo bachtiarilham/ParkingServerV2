@@ -14,12 +14,17 @@ var (
 )
 
 type LogoutUseCase struct {
-	authRepo repository.AuthRepository
+	authRepo    repository.AuthRepository
+	sessionRepo repository.SessionRepository
 }
 
-func NewLogoutUseCase(authRepo repository.AuthRepository) *LogoutUseCase {
+func NewLogoutUseCase(
+	authRepo repository.AuthRepository,
+	sessionRepo repository.SessionRepository,
+) *LogoutUseCase {
 	return &LogoutUseCase{
-		authRepo: authRepo,
+		authRepo:    authRepo,
+		sessionRepo: sessionRepo,
 	}
 }
 
@@ -33,7 +38,7 @@ func (uc *LogoutUseCase) Execute(ctx context.Context, reqModel model.LogoutReqMo
 	// 3. Hapus semua session yang terkait dengan user ini (atau hanya session tertentu jika refresh token disediakan)
 	if reqModel.RefreshToken != "" {
 		// Jika refresh token disediakan, hapus session spesifik
-		err = uc.authRepo.DeleteSession(ctx, reqModel.RefreshToken)
+		err = uc.sessionRepo.DeleteSession(ctx, reqModel.RefreshToken)
 		if err != nil {
 			// Log error jika perlu
 			return nil, fmt.Errorf("failed to delete specific session: %w", err)

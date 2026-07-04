@@ -11,23 +11,26 @@ import (
 )
 
 type RefreshTokenUseCase struct {
-	repository repository.AuthRepository
-	jwtSecret  string
-	accessTTL  time.Duration
-	refreshTTL time.Duration
+	authRepo    repository.AuthRepository
+	sessionRepo repository.SessionRepository
+	jwtSecret   string
+	accessTTL   time.Duration
+	refreshTTL  time.Duration
 }
 
 func NewRefreshTokenUseCase(
-	repository repository.AuthRepository,
+	authRepo repository.AuthRepository,
+	sessionRepo repository.SessionRepository,
 	jwtSecret string,
 	accessTTL time.Duration,
 	refreshTTL time.Duration,
 ) *RefreshTokenUseCase {
 	return &RefreshTokenUseCase{
-		repository: repository,
-		jwtSecret:  jwtSecret,
-		accessTTL:  accessTTL,
-		refreshTTL: refreshTTL,
+		authRepo:    authRepo,
+		sessionRepo: sessionRepo,
+		jwtSecret:   jwtSecret,
+		accessTTL:   accessTTL,
+		refreshTTL:  refreshTTL,
 	}
 }
 
@@ -37,7 +40,7 @@ func (uc *RefreshTokenUseCase) Execute(ctx context.Context, reqModel model.Refre
 	}
 
 	// 1. Cari session berdasarkan refresh token
-	session, err := uc.repository.FindSessionByRefreshToken(ctx, reqModel.RefreshToken)
+	session, err := uc.sessionRepo.FindSessionByRefreshToken(ctx, reqModel.RefreshToken)
 	if err != nil {
 		return nil, errorstring.ErrInvalidRefreshToken
 	}
@@ -45,7 +48,7 @@ func (uc *RefreshTokenUseCase) Execute(ctx context.Context, reqModel model.Refre
 	// 2. Cek apakah refresh token sudah kadaluarsa
 	if time.Now().After(session.ExpiresAt) {
 		// Hapus session lama jika kadaluarsa
-		uc.repository.DeleteSession(ctx, reqModel.RefreshToken) // Log error jika perlu, tapi jangan hentikan proses
+		uc.sessionRepo.DeleteSession(ctx, reqModel.RefreshToken) // Log error jika perlu, tapi jangan hentikan proses
 		return nil, errorstring.ErrExpiredRefreshToken
 	}
 
@@ -95,7 +98,7 @@ func (uc *RefreshTokenUseCase) Execute(ctx context.Context, reqModel model.Refre
 		UpdatedAt:    now,
 		CreatedAt:    now,
 	}
-	if err := uc.repository.RotateSession(ctx, reqModel.RefreshToken, newSession); err != nil {
+	if err := uc.authRepo.RotateSession(ctx, reqModel.RefreshToken, newSession); err != nil {
 		return nil, fmt.Errorf("rotate session: %w", err)
 	}
 

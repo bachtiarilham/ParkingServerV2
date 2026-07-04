@@ -5,6 +5,5 @@ type RefreshTokenRequestDto struct {
 }
 
 type RefreshTokenResponseDto struct {
-	UserDto     `json:",inline"` // Embed AuthUser
-	TokenSetDto `json:",inline"` // Embed TokenSet
+	TokenSetDto `json:"TokenSetDto"` // Embed TokenSet
 }

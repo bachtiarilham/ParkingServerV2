@@ -12,7 +12,7 @@ type RiwayatRequestDto struct {
 	Lokasi      string `json:"lokasi"`
 }
 
-type RiwayatDto struct {
+type RiwayatResponseDto struct {
 	Sections []RiwayatSectionDto `json:"sections,omitempty"`
 }
 

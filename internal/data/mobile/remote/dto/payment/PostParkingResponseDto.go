@@ -1,6 +1,6 @@
-package dto
+package payment
 
-type PembayaranDto struct {
+type PostParkingResponseDto struct {
 	Title               *string                   `json:"title,omitempty"`
 	StatusCard          *PembayaranStatusCardDto  `json:"status_card,omitempty"`
 	TotalPembayaran     *int64                    `json:"total_pembayaran,omitempty"`

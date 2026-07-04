@@ -1,15 +1,15 @@
-package mapper
+package payment
 
 import (
-	"modulegue/internal/data/mobile/remote/dto"
-	"modulegue/internal/domain/mobile/model"
+	dto "modulegue/internal/data/mobile/remote/dto/payment"
+	model "modulegue/internal/domain/mobile/model/payment"
 )
 
-func ToSubmitQrRequestModel(src *dto.SubmitQrRequestDto) *model.SubmitQrRequestModel {
+func ToPostPaymentParkingRequestModel(src *dto.PostPaymentParkingRequestDto) *model.PostPaymentParkingRequestModel {
 	if src == nil {
 		return nil
 	}
-	return &model.SubmitQrRequestModel{
+	return &model.PostPaymentParkingRequestModel{
 		SessionID:     src.SessionID,
 		PlatNomor:     src.PlatNomor,
 		Lokasi:        src.Lokasi,

@@ -5,11 +5,11 @@ import (
 	model "modulegue/internal/domain/mobile/model/riwayat"
 )
 
-func ToRiwayatDto(src *model.RiwayatModel) *dto.RiwayatDto {
+func ToRiwayatDto(src *model.RiwayatModel) *dto.RiwayatResponseDto {
 	if src == nil {
 		return nil
 	}
-	out := &dto.RiwayatDto{Sections: make([]dto.RiwayatSectionDto, 0, len(src.Sections))}
+	out := &dto.RiwayatResponseDto{Sections: make([]dto.RiwayatSectionDto, 0, len(src.Sections))}
 	for _, item := range src.Sections {
 		out.Sections = append(out.Sections, *ToRiwayatSectionDto(&item))
 	}

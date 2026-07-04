@@ -10,18 +10,33 @@ import (
 	"modulegue/core/queue"
 	middleware "modulegue/internal/middleware"
 
+	//auth
 	authUc "modulegue/internal/domain/mobile/usecase/auth"
-	helperUc "modulegue/internal/domain/mobile/usecase/helper"
-	homeUc "modulegue/internal/domain/mobile/usecase/home"
-	laporanUc "modulegue/internal/domain/mobile/usecase/laporan"
-	riwayatUc "modulegue/internal/domain/mobile/usecase/riwayat"
-	subscriptionUc "modulegue/internal/domain/mobile/usecase/subscription"
 	authHandler "modulegue/internal/handler/mobile/auth"
-	helperHandler "modulegue/internal/handler/mobile/helper"
+
+	//home
+	homeUc "modulegue/internal/domain/mobile/usecase/home"
 	homeHandler "modulegue/internal/handler/mobile/home"
+
+	//laporan
+	laporanUc "modulegue/internal/domain/mobile/usecase/laporan"
 	laporanHandler "modulegue/internal/handler/mobile/laporan"
+
+	//riwayat
+	riwayatUc "modulegue/internal/domain/mobile/usecase/riwayat"
 	riwayatHandler "modulegue/internal/handler/mobile/riwayat"
+
+	//subscription
+	subscriptionUc "modulegue/internal/domain/mobile/usecase/subscription"
 	subscriptionHandler "modulegue/internal/handler/mobile/subscription"
+
+	//payment
+	paymentUc "modulegue/internal/domain/mobile/usecase/payment"
+	paymentHandler "modulegue/internal/handler/mobile/payment"
+
+	//helper
+	helperUc "modulegue/internal/domain/mobile/usecase/helper"
+	helperHandler "modulegue/internal/handler/mobile/helper"
 	// mobile_handler "modulegue/internal/delivery/mobile/customer/handler"
 	// jukir_handler "modulegue/internal/delivery/mobile/handler"
 	// shared_handler "modulegue/internal/delivery/shared/handler"
@@ -46,8 +61,13 @@ func RegisterRoutes(
 	riwayatUc *riwayatUc.GetRiwayatUseCase,
 	//subscription
 	subscriptionUc *subscriptionUc.SubscriptionUseCase,
+	//payment
+	postParkingUc *paymentUc.PostParkingUseCase,
+	postPaymentParkingUc *paymentUc.PostPaymentParkingUseCase,
+	getPembayaranStatusUc *paymentUc.GetPembayaranStatusUseCase,
 	//helper
 	GetLokasiUc *helperUc.GetLokasiUseCase,
+
 	//setting
 	// getUserProfileUC *useruc.GetProfileUseCase,
 	//payment
@@ -74,8 +94,13 @@ func RegisterRoutes(
 	laporanHandler := laporanHandler.NewLaporanHandler(laporanUc)
 	//subscription
 	subscriptionHandler := subscriptionHandler.NewSubscriptionHandler(subscriptionUc)
+	//payment
+	postParkingHandler := paymentHandler.NewPostParkingHandler(postParkingUc)
+	postPaymentParkingHandler := paymentHandler.NewPostPaymentParkingHandler(postPaymentParkingUc)
+	getPembayaranStatusHandler := paymentHandler.NewGetPembayaranStatusHandler(getPembayaranStatusUc)
 	//helper
 	getLokasiHandler := helperHandler.NewGetLocationHandler(GetLokasiUc)
+
 	// scanHandler := mobile_handler.NewScanHandler(submitQrUC, scanDetailUC)
 	// userHandler := shared_handler.NewUserHandler(getUserProfileUC)
 	// paymentHandler := jukir_handler.NewPaymentHandler(initiatePaymentUC)
@@ -94,6 +119,10 @@ func RegisterRoutes(
 	protectedLaporanHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(laporanHandler.Execute))
 	//subscription
 	protectedSubscriptionHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(subscriptionHandler.Execute))
+	//payment
+	protectedPostParkingHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(postParkingHandler.Execute))
+	protectedPostPaymentParkingHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(postPaymentParkingHandler.Execute))
+	protectedGetPembayaranStatusHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(getPembayaranStatusHandler.Execute))
 	//helper
 	protectedGetLokasiHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(getLokasiHandler.Execute))
 
@@ -118,6 +147,10 @@ func RegisterRoutes(
 	mux.Handle("GET /api/v2/linespot/riwayat", protectedRiwayatHandler)
 	//subscription
 	mux.Handle("GET /api/v2/linespot/subscribe", protectedSubscriptionHandler)
+	//payment
+	mux.Handle("POST /api/v2/linespot/parking", protectedPostParkingHandler)
+	mux.Handle("POST /api/v2/linespot/parking/payment", protectedPostPaymentParkingHandler)
+	mux.Handle("GET /api/v2/linespot/parking/{sessionId}/status", protectedGetPembayaranStatusHandler)
 	//helper
 	mux.Handle("GET /api/v2/linespot/get_lokasi", protectedGetLokasiHandler)
 

@@ -5,12 +5,12 @@ import (
 	model "modulegue/internal/domain/mobile/model/laporan"
 )
 
-func ToLaporanDto(src *model.LaporanModel) *dto.LaporanDto {
+func ToLaporanDto(src *model.LaporanModel) *dto.LaporanResponseDto {
 	if src == nil {
 		return nil
 	}
 
-	out := &dto.LaporanDto{
+	out := &dto.LaporanResponseDto{
 		TanggalTerpilih:    src.TanggalTerpilih,
 		Periode:            ToLaporanDateRangeDto(src.Periode),
 		Summary:            ToLaporanSummaryDto(src.Summary),

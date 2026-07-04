@@ -1,7 +1,7 @@
 package payment
 
-type IsiQrModel struct {
-	SessionID     int64  `json:"session_id"`
+type PostPaymentParkingRequestDto struct {
+	SessionID     string `json:"session_id"`
 	PlatNomor     string `json:"plat_nomor"`
 	Lokasi        string `json:"lokasi"`
 	WaktuMasuk    string `json:"waktu_masuk"`
