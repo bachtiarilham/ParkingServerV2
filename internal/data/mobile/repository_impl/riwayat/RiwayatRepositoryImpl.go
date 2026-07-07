@@ -23,6 +23,7 @@ func (r *RiwayatRepositoryImpl) GetRiwayat(ctx context.Context, req model.Riwaya
 	startDate := strings.TrimSpace(req.StartDate)
 	endDate := strings.TrimSpace(req.EndDate)
 	lokasi := strings.TrimSpace(req.Lokasi)
+	statusFilter := ""
 	paymentFilter := strings.TrimSpace(req.Payment)
 	vehicleFilter := strings.TrimSpace(req.Vehicle)
 
@@ -42,7 +43,7 @@ func (r *RiwayatRepositoryImpl) GetRiwayat(ctx context.Context, req model.Riwaya
 			DATE_FORMAT(COALESCE(fpt.paid_at, fpt.occurred_at), '%Y-%m-%d %H:%i:%s') AS item_time,
 			fpt.final_amount,
 			CASE
-				WHEN fpt.operation_type IN ('ENTRY', 'MASUK', 'CHECKIN') THEN 1
+				WHEN UPPER(fpt.operation_type) IN ('ENTRY', 'MASUK', 'CHECKIN') THEN 1
 				ELSE 0
 			END AS is_entry
 		FROM financial_parking_transaction fpt
@@ -50,12 +51,12 @@ func (r *RiwayatRepositoryImpl) GetRiwayat(ctx context.Context, req model.Riwaya
 		LEFT JOIN vehicle_type vt ON vt.id = fpt.vehicle_type_id
 		LEFT JOIN parking_location pl ON pl.id = fpt.location_id
 		WHERE DATE(fpt.occurred_at) BETWEEN ? AND ?
-		  AND (? = '' OR pl.location_name = ?)
-		  AND (? = '' OR UPPER(fpt.transaction_status) = UPPER(?))
-		  AND (? = '' OR UPPER(COALESCE(fpt.payment_method, '')) = UPPER(?))
-		  AND (? = '' OR UPPER(vt.vehicle_type_name) = UPPER(?))
+		  AND (? = '' OR pl.location_name = ? OR pl.location_code = ?)
+		  AND (? = '' OR UPPER(COALESCE(fpt.transaction_status, '')) = UPPER(?))
+		  AND (? = '' OR UPPER(COALESCE(CAST(fpt.payment_method AS CHAR), '')) = UPPER(?))
+		  AND (? = '' OR UPPER(vt.vehicle_type_name) = UPPER(?) OR UPPER(vt.vehicle_type_code) = UPPER(?))
 		  AND (? = 0 OR fpt.customer_user_id = ? OR fpt.jukir_user_id = ? OR fpt.officer_user_id = ?)
-		  AND fpt.transaction_status <> 'void'
+		  AND UPPER(COALESCE(fpt.transaction_status, '')) <> 'VOID'
 		ORDER BY COALESCE(fpt.paid_at, fpt.occurred_at) DESC
 	`
 
@@ -63,9 +64,10 @@ func (r *RiwayatRepositoryImpl) GetRiwayat(ctx context.Context, req model.Riwaya
 		ctx,
 		query,
 		startDate, endDate,
-		lokasi, lokasi,
+		lokasi, lokasi, lokasi,
+		statusFilter, statusFilter,
 		paymentFilter, paymentFilter,
-		vehicleFilter, vehicleFilter,
+		vehicleFilter, vehicleFilter, vehicleFilter,
 		req.UserID, req.UserID, req.UserID, req.UserID,
 	)
 	if err != nil {
@@ -117,6 +119,10 @@ func (r *RiwayatRepositoryImpl) GetRiwayat(ctx context.Context, req model.Riwaya
 			Amount:      &amountCopy,
 			IsEntry:     &isEntry,
 		})
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate riwayat: %w", err)
 	}
 
 	return &model.RiwayatModel{

@@ -125,7 +125,7 @@ func (r *AuthRepositoryImpl) RegisterUser(ctx context.Context, req model.Registe
 	result, err := r.db.ExecContext(
 		ctx,
 		insertQuery,
-		2,
+		1,
 		req.FullName,
 		nullIfEmpty(req.NIK),
 		nullIfEmpty(req.Phone),
@@ -154,13 +154,15 @@ func (r *AuthRepositoryImpl) RegisterUser(ctx context.Context, req model.Registe
 func (r *AuthRepositoryImpl) ExistsByEmailOrUsernameOrPhone(ctx context.Context, email, username, phone string) (*model.UserExistRespModel, error) {
 	query := `
 		SELECT
-			MAX(CASE WHEN email = ? THEN 1 ELSE 0 END) AS email_exists,
-			MAX(CASE WHEN username = ? THEN 1 ELSE 0 END) AS username_exists,
-			MAX(CASE WHEN phone_number = ? THEN 1 ELSE 0 END) AS phone_exists
+			COALESCE(MAX(CASE WHEN email = ? THEN TRUE ELSE FALSE END), FALSE) AS email_exists,
+			COALESCE(MAX(CASE WHEN username = ? THEN TRUE ELSE FALSE END), FALSE) AS username_exists,
+			COALESCE(MAX(CASE WHEN phone_number = ? THEN TRUE ELSE FALSE END), FALSE) AS phone_exists
 		FROM system_user
 		WHERE email = ? OR username = ? OR phone_number = ?
 	`
-
+	// MAX(CASE WHEN email = ? THEN 1 ELSE 0 END) AS email_exists,
+	// 			MAX(CASE WHEN username = ? THEN 1 ELSE 0 END) AS username_exists,
+	// 			MAX(CASE WHEN phone_number = ? THEN 1 ELSE 0 END) AS phone_exists
 	var emailExists, usernameExists, phoneExists int
 	err := r.db.QueryRowContext(
 		ctx,
@@ -177,7 +179,6 @@ func (r *AuthRepositoryImpl) ExistsByEmailOrUsernameOrPhone(ctx context.Context,
 		UsernameExists: usernameExists == 1,
 		PhoneExists:    phoneExists == 1,
 	}, nil
-
 }
 
 func (r *AuthRepositoryImpl) FindByID(ctx context.Context, id int64) (*model.UserModel, error) {

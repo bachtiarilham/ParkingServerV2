@@ -1,0 +1,4 @@
+./PostParkingRequestModel.go
+./PostParkingResponseModel.go
+./PostPaymentParkingRequestModel.go
+./PostPaymentParkingResponseModel.go

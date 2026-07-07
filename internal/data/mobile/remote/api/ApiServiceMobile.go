@@ -142,9 +142,9 @@ func RegisterRoutes(
 	//home
 	mux.Handle("GET /api/v2/linespot/home", protectedHomeHandler)
 	//laporan
-	mux.Handle("GET /api/v2/linespot/laporan", protectedLaporanHandler)
+	mux.Handle("POST /api/v2/linespot/laporan", protectedLaporanHandler)
 	//riwayat
-	mux.Handle("GET /api/v2/linespot/riwayat", protectedRiwayatHandler)
+	mux.Handle("POST /api/v2/linespot/riwayat", protectedRiwayatHandler)
 	//subscription
 	mux.Handle("GET /api/v2/linespot/subscribe", protectedSubscriptionHandler)
 	//payment

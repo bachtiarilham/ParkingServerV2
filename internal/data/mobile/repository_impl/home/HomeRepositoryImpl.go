@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	model "modulegue/internal/domain/mobile/model/home"
 	"modulegue/internal/domain/mobile/repository"
@@ -23,16 +24,6 @@ func (r *HomeRepositoryImpl) GetHome(ctx context.Context, reqModel model.GetHome
 		return nil, err
 	}
 
-	customerSummary, err := r.getCustomerSummary(ctx, reqModel.UserID)
-	if err != nil {
-		return nil, err
-	}
-
-	jukirSummary, err := r.getJukirSummary(ctx, reqModel.UserID)
-	if err != nil {
-		return nil, err
-	}
-
 	events, news, err := r.getRecentEventsAndNews(ctx, 10, 0)
 	if err != nil {
 		return nil, err
@@ -44,20 +35,65 @@ func (r *HomeRepositoryImpl) GetHome(ctx context.Context, reqModel model.GetHome
 	}
 
 	return &model.HomeModel{
-		Profile:         profile,
-		CustomerSummary: customerSummary,
-		JukirSummary:    jukirSummary,
-		Events:          events,
-		News:            news,
-		Warnings:        warnings,
+		Profile:  profile,
+		Events:   events,
+		News:     news,
+		Warnings: warnings,
 	}, nil
 }
 
 func (r *HomeRepositoryImpl) getProfile(ctx context.Context, userID int64) (*model.ProfileModel, error) {
-	query := `SELECT id, full_name FROM system_user WHERE id = ? LIMIT 1`
+	query := `
+		SELECT
+			su.id,
+			su.full_name AS name,
+			COALESCE(uw.current_balance_amount, 0) AS saldo,
+			oa.effective_to AS expired_date,
+			COALESCE(SUM(fpt.jukir_share), 0) AS pendapatan,
+			pl.location_name AS lokasi,
+			pa.area_name AS area,
+			pz.zone_name AS zona
+		FROM system_user su
+		LEFT JOIN user_wallet uw
+			ON uw.user_id = su.id
+			AND uw.wallet_type = 'emoney'
+		LEFT JOIN officer_assignment_current oa
+			ON oa.officer_user_id = su.id
+		LEFT JOIN parking_location pl
+			ON pl.id = oa.location_id
+		LEFT JOIN parking_area pa
+			ON pa.id = oa.area_id
+		LEFT JOIN parking_zone pz
+			ON pz.id = oa.zone_id
+		LEFT JOIN financial_parking_transaction fpt
+			ON fpt.jukir_user_id = su.id
+		WHERE su.id = ? 
+			GROUP BY
+			su.id, su.full_name, uw.current_balance_amount,
+			oa.effective_to, pl.location_name, pa.area_name, pz.zone_name;
+	`
 
-	var profile model.ProfileModel
-	err := r.db.QueryRowContext(ctx, query, userID).Scan(&profile.ID, &profile.Name)
+	var (
+		profile     model.ProfileModel
+		name        sql.NullString
+		saldo       sql.NullFloat64
+		expiredDate sql.NullTime
+		pendapatan  sql.NullFloat64
+		lokasi      sql.NullString
+		area        sql.NullString
+		zona        sql.NullString
+	)
+
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(
+		&profile.ID,
+		&name,
+		&saldo,
+		&expiredDate,
+		&pendapatan,
+		&lokasi,
+		&area,
+		&zona,
+	)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("user not found")
@@ -65,58 +101,18 @@ func (r *HomeRepositoryImpl) getProfile(ctx context.Context, userID int64) (*mod
 		return nil, fmt.Errorf("get profile: %w", err)
 	}
 
+	profile.Name = name.String
+	profile.Saldo = int64(saldo.Float64)
+	profile.Pendapatan = int64(pendapatan.Float64)
+	profile.Lokasi = lokasi.String
+	profile.Area = area.String
+	profile.Zona = zona.String
+
+	if expiredDate.Valid {
+		profile.ExpiredDate = expiredDate.Time.Format(time.RFC3339)
+	}
+
 	return &profile, nil
-}
-
-func (r *HomeRepositoryImpl) getCustomerSummary(ctx context.Context, userID int64) (*model.CustomerSummaryModel, error) {
-	query := `
-		SELECT COALESCE(current_balance_amount, 0)
-		FROM user_wallet
-		WHERE user_id = ? AND wallet_status = 'active'
-		LIMIT 1
-	`
-
-	var balance int64
-	err := r.db.QueryRowContext(ctx, query, userID).Scan(&balance)
-	if err != nil && err != sql.ErrNoRows {
-		return nil, fmt.Errorf("get customer summary: %w", err)
-	}
-	if err == sql.ErrNoRows {
-		balance = 0
-	}
-
-	return &model.CustomerSummaryModel{
-		Saldo:       balance,
-		ExpiredDate: "",
-	}, nil
-}
-
-func (r *HomeRepositoryImpl) getJukirSummary(ctx context.Context, userID int64) (*model.JukirSummaryModel, error) {
-	query := `
-		SELECT
-			COALESCE(SUM(fpt.jukir_share), 0) AS pendapatan,
-			COALESCE(MAX(pl.location_name), '') AS lokasi,
-			COALESCE(MAX(pa.area_name), '') AS area,
-			COALESCE(MAX(pz.zone_name), '') AS zona
-		FROM financial_parking_transaction fpt
-		LEFT JOIN parking_location pl ON pl.id = fpt.location_id
-		LEFT JOIN parking_area pa ON pa.id = pl.area_id
-		LEFT JOIN parking_zone pz ON pz.id = pl.zone_id
-		WHERE fpt.jukir_user_id = ?
-	`
-
-	var summary model.JukirSummaryModel
-	err := r.db.QueryRowContext(ctx, query, userID).Scan(
-		&summary.Pendapatan,
-		&summary.Lokasi,
-		&summary.Area,
-		&summary.Zona,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("get jukir summary: %w", err)
-	}
-
-	return &summary, nil
 }
 
 func (r *HomeRepositoryImpl) getRecentEventsAndNews(ctx context.Context, limit, offset int) ([]model.EventsModel, []model.NewsModel, error) {

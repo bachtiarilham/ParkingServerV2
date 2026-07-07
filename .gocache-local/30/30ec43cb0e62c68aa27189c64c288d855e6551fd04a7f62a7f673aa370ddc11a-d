@@ -1,0 +1,8 @@
+./AuthRepository.go
+./HelperRepository.go
+./HomeRepository.go
+./LaporanRepository.go
+./PaymentRepository.go
+./RiwayatRepository.go
+./SessionRepository.go
+./SubscriptionRepository.go

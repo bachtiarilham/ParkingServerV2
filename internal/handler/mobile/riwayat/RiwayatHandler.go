@@ -1,9 +1,12 @@
 package riwayat
 
 import (
+	"encoding/json"
 	"net/http"
+	"strings"
 
 	"modulegue/core/response"
+	dto "modulegue/internal/data/mobile/remote/dto/riwayat"
 	mapper "modulegue/internal/data/mobile/remote/mapper/riwayat"
 	model "modulegue/internal/domain/mobile/model/riwayat"
 	usecase "modulegue/internal/domain/mobile/usecase/riwayat"
@@ -18,7 +21,7 @@ func NewRiwayatHandler(getRiwayatUc *usecase.GetRiwayatUseCase) *RiwayatHandler 
 	return &RiwayatHandler{getRiwayatUc: getRiwayatUc}
 }
 
-// Endpoint: GET /api/v2/linespot/home
+// Endpoint: POST /api/v2/linespot/riwayat
 func (h *RiwayatHandler) Execute(w http.ResponseWriter, r *http.Request) {
 	userID, okUserId := middleware.UserIDFromContext(r.Context())
 	roleID, okRoleId := middleware.RoleIDFromContext(r.Context())
@@ -27,22 +30,28 @@ func (h *RiwayatHandler) Execute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var req dto.RiwayatRequestDto
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Error(w, http.StatusBadRequest, "request tidak valid")
+		return
+	}
+
 	input := model.RiwayatRequestModel{
 		UserID:    userID,
 		RoleID:    roleID,
-		Username:  r.URL.Query().Get("username"),
-		StartDate: r.URL.Query().Get("startDate"),
-		EndDate:   r.URL.Query().Get("endDate"),
-		Payment:   r.URL.Query().Get("payment"),
-		Vehicle:   r.URL.Query().Get("vehicle"),
-		Lokasi:    r.URL.Query().Get("lokasi"),
+		Username:  strings.TrimSpace(req.Username),
+		StartDate: strings.TrimSpace(req.StartDate),
+		EndDate:   strings.TrimSpace(req.EndDate),
+		Payment:   strings.TrimSpace(req.Payment),
+		Vehicle:   strings.TrimSpace(req.Vehicle),
+		Lokasi:    strings.TrimSpace(req.Lokasi),
 	}
 
 	result, err := h.getRiwayatUc.Execute(r.Context(), input)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "gagal memuat dashboard")
+		response.Error(w, http.StatusInternalServerError, "gagal memuat riwayat")
 		return
 	}
 
-	response.Success(w, http.StatusOK, "Dashboard dimuat", mapper.ToRiwayatDto(result))
+	response.Success(w, http.StatusOK, "Riwayat dimuat", mapper.ToRiwayatDto(result))
 }

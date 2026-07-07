@@ -1,29 +1,21 @@
 package home
 
 type HomeResponseDto struct {
-	Profile         *ProfileDto         `json:"profile"`
-	CustomerSummary *CustomerSummaryDto `json:"summary"`
-	JukirSummary    *JukirSummaryDto    `json:"jukirSummary"`
-	Events          []EventDto          `json:"events"`
-	News            []NewsDto           `json:"news"`
-	Warnings        *WarningsDto        `json:"warnings"`
+	Profile  *ProfileDto  `json:"profile"`
+	Events   []EventDto   `json:"events"`
+	News     []NewsDto    `json:"news"`
+	Warnings *WarningsDto `json:"warnings"`
 }
 
 type ProfileDto struct {
-	Id   int64  `json:"id"`
-	Name string `json:"name"`
-}
-
-type CustomerSummaryDto struct {
+	Id          int64  `json:"id"`
+	Name        string `json:"name"`
 	Saldo       int64  `json:"saldo"`
 	ExpiredDate string `json:"expiredDate"`
-}
-
-type JukirSummaryDto struct {
-	Pendapatan int64  `json:"pendapatan"`
-	Lokasi     string `json:"lokasi"`
-	Area       string `json:"area"`
-	Zona       string `json:"zona"`
+	Pendapatan  int64  `json:"pendapatan"`
+	Lokasi      string `json:"lokasi"`
+	Area        string `json:"area"`
+	Zona        string `json:"zona"`
 }
 
 type EventDto struct {
