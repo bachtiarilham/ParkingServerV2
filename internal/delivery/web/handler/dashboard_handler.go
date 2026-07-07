@@ -5,12 +5,12 @@ import (
 	"errors"
 	"net/http"
 
+	"modulegue/core/response"
 	"modulegue/internal/delivery/web/dto"
 	"modulegue/internal/delivery/web/mapper"
 	"modulegue/internal/domain/dashboard"
 	"modulegue/internal/middleware"
 	"modulegue/internal/usecase/web"
-	"modulegue/pkg/response"
 )
 
 type DashboardHandler struct {
