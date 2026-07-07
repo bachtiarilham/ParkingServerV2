@@ -8,7 +8,7 @@ import (
 
 type AuthRepository interface {
 	LoginUser(ctx context.Context, identifier, password string) (*model.UserModel, error)
-	ExistsByEmailOrUsernameOrPhone(ctx context.Context, email, username, phone string) (*model.UserExistResult, error)
+	ExistsByEmailOrUsernameOrPhone(ctx context.Context, email, username, phone string) (*model.UserExistRespModel, error)
 
 	LogoutUser(ctx context.Context, reqModel model.LogoutReqModel) error
 	FindByID(ctx context.Context, id int64) (*model.UserModel, error)

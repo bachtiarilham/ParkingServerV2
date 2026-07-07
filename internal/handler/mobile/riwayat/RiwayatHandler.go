@@ -28,15 +28,14 @@ func (h *RiwayatHandler) Execute(w http.ResponseWriter, r *http.Request) {
 	}
 
 	input := model.RiwayatRequestModel{
-		UserID:      userID,
-		RoleID:      roleID,
-		Username:    r.URL.Query().Get("username"),
-		StartDate:   r.URL.Query().Get("startDate"),
-		EndDate:     r.URL.Query().Get("endDate"),
-		Transaction: r.URL.Query().Get("transaction"),
-		Payment:     r.URL.Query().Get("payment"),
-		Vehicle:     r.URL.Query().Get("vehicle"),
-		Lokasi:      r.URL.Query().Get("lokasi"),
+		UserID:    userID,
+		RoleID:    roleID,
+		Username:  r.URL.Query().Get("username"),
+		StartDate: r.URL.Query().Get("startDate"),
+		EndDate:   r.URL.Query().Get("endDate"),
+		Payment:   r.URL.Query().Get("payment"),
+		Vehicle:   r.URL.Query().Get("vehicle"),
+		Lokasi:    r.URL.Query().Get("lokasi"),
 	}
 
 	result, err := h.getRiwayatUc.Execute(r.Context(), input)

@@ -16,5 +16,5 @@ func ToRegisterResponseDto(src *model.RegisterResponseModel) *dto.RegisterRespon
 	if src == nil {
 		return nil
 	}
-	return &dto.RegisterResponseDto{Message: src.Message, User: *ToUserDto(&src.User)}
+	return &dto.RegisterResponseDto{Message: src.Message}
 }

@@ -1,6 +1,6 @@
 package auth
 
-type UserExistResult struct {
+type UserExistRespModel struct {
 	EmailExists    bool
 	UsernameExists bool
 	PhoneExists    bool

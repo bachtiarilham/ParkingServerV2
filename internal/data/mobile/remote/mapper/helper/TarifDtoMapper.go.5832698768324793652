@@ -12,8 +12,10 @@ func ToTarifDto(src *model.TarifModel) *dto.TarifDto {
 		return nil
 	}
 
+	kendaraan, _ := strconv.ParseInt(src.Kendaraan, 10, 64)
+
 	return &dto.TarifDto{
-		Kendaraan: src.Kendaraan,
+		Kendaraan: kendaraan,
 		Nominal:   strconv.FormatInt(src.Nominal, 10),
 	}
 }

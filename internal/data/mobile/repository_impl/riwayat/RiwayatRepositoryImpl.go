@@ -23,7 +23,6 @@ func (r *RiwayatRepositoryImpl) GetRiwayat(ctx context.Context, req model.Riwaya
 	startDate := strings.TrimSpace(req.StartDate)
 	endDate := strings.TrimSpace(req.EndDate)
 	lokasi := strings.TrimSpace(req.Lokasi)
-	transactionFilter := strings.TrimSpace(req.Transaction)
 	paymentFilter := strings.TrimSpace(req.Payment)
 	vehicleFilter := strings.TrimSpace(req.Vehicle)
 
@@ -65,7 +64,6 @@ func (r *RiwayatRepositoryImpl) GetRiwayat(ctx context.Context, req model.Riwaya
 		query,
 		startDate, endDate,
 		lokasi, lokasi,
-		transactionFilter, transactionFilter,
 		paymentFilter, paymentFilter,
 		vehicleFilter, vehicleFilter,
 		req.UserID, req.UserID, req.UserID, req.UserID,

@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"modulegue/config"
+	"modulegue/core/queue"
+	authrepo "modulegue/internal/data/mobile/repository_impl/auth"
 	webhandler "modulegue/internal/delivery/web/handler"
 	"modulegue/internal/middleware"
-	sharedrepo "modulegue/internal/repository"
 	webrepo "modulegue/internal/repository/web"
 	webuc "modulegue/internal/usecase/web"
-	"modulegue/pkg/queue"
 )
 
 func RegisterRoutes(mux *http.ServeMux, cfg *config.Config, db *sql.DB, q *queue.Queue, logger *log.Logger) {
@@ -20,9 +20,15 @@ func RegisterRoutes(mux *http.ServeMux, cfg *config.Config, db *sql.DB, q *queue
 	_ = logger
 
 	adminRepo := webrepo.NewMySQL(db)
-	authRepo := sharedrepo.NewAuthRepository(db)
+	sessionRepo := authrepo.NewSessionRepositoryImpl(db)
 
-	authUC := webuc.NewAuthUseCase(adminRepo, authRepo, cfg.JWTSecret, cfg.AccessTokenMinutes, cfg.RefreshTokenHours)
+	authUC := webuc.NewAuthUseCase(
+		adminRepo,
+		sessionRepo,
+		cfg.JWTSecret,
+		time.Duration(cfg.AccessTokenMinutes)*time.Minute,
+		time.Duration(cfg.RefreshTokenHours)*time.Hour,
+	)
 	dashboardUC := webuc.NewDashboardUseCase(adminRepo)
 
 	authHandler := webhandler.NewAuthHandler(authUC)

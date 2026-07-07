@@ -98,7 +98,7 @@ func (uc *RefreshTokenUseCase) Execute(ctx context.Context, reqModel model.Refre
 		UpdatedAt:    now,
 		CreatedAt:    now,
 	}
-	if err := uc.authRepo.RotateSession(ctx, reqModel.RefreshToken, newSession); err != nil {
+	if err := uc.sessionRepo.RotateSession(ctx, reqModel.RefreshToken, newSession); err != nil {
 		return nil, fmt.Errorf("rotate session: %w", err)
 	}
 

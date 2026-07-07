@@ -3,7 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
-	"modulegue/internal/domain/user" // Import domain user
+	"modulegue/internal/domain/mobile/repository" // Import domain user
 )
 
 // GetProfileInput tidak perlu input selain userID dari context
@@ -24,10 +24,10 @@ type GetProfileOutput struct {
 }
 
 type GetProfileUseCase struct {
-	userRepo user.Repository
+	userRepo repository.AuthRepository
 }
 
-func NewGetProfileUseCase(userRepo user.Repository) *GetProfileUseCase {
+func NewGetProfileUseCase(userRepo repository.AuthRepository) *GetProfileUseCase {
 	return &GetProfileUseCase{
 		userRepo: userRepo,
 	}
@@ -42,13 +42,13 @@ func (uc *GetProfileUseCase) Execute(ctx context.Context, input GetProfileInput)
 
 	// Map dari domain entity ke output usecase
 	output := GetProfileOutput{
-		UserID:     u.ID,
+		UserID:     u.UserId,
 		Nik:        u.Nik,
 		FullName:   u.FullName,
 		Phone:      u.Phone,
 		Email:      u.Email,
 		Username:   u.Username,
-		RoleID:     u.RoleID, // Kirim RoleID sebagai Long (int64)
+		RoleID:     u.RoleId, // Kirim RoleID sebagai Long (int64)
 		IsVerified: u.IsVerified,
 	}
 

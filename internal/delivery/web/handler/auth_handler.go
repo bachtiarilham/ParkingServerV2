@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
+	"modulegue/core/response"
 	"modulegue/internal/delivery/web/dto"
 	"modulegue/internal/delivery/web/mapper"
 	"modulegue/internal/domain/dashboard"
 	"modulegue/internal/usecase/web"
-	"modulegue/pkg/response"
 )
 
 type AuthHandler struct {
@@ -26,6 +27,8 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusBadRequest, "request tidak valid")
 		return
 	}
+	req.Identity = strings.TrimSpace(req.Identity)
+	req.Password = strings.TrimSpace(req.Password)
 	if req.Identity == "" || req.Password == "" {
 		response.Error(w, http.StatusBadRequest, "identity dan password wajib diisi")
 		return
@@ -54,6 +57,11 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	var req dto.RefreshTokenRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		response.Error(w, http.StatusBadRequest, "request tidak valid")
+		return
+	}
+	req.RefreshToken = strings.TrimSpace(req.RefreshToken)
+	if req.RefreshToken == "" {
+		response.Error(w, http.StatusBadRequest, "refresh token wajib diisi")
 		return
 	}
 

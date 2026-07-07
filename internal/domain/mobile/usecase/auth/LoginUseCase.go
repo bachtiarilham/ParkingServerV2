@@ -63,6 +63,7 @@ func (uc *LoginUseCase) Execute(ctx context.Context, reqModel model.LoginRequest
 	accessToken, err := jwt.SignHS256(jwt.Claims{
 		Subject:    fmt.Sprintf("%d", hasilLogin.UserId),
 		UserID:     hasilLogin.UserId,
+		RoleID:     hasilLogin.RoleId,
 		Expiration: accessExp.Unix(),
 		IssuedAt:   now.Unix(),
 		Type:       "access",

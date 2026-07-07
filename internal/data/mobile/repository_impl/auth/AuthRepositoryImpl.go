@@ -92,6 +92,13 @@ func (r *AuthRepositoryImpl) LogoutUser(ctx context.Context, reqModel model.Logo
 }
 
 func (r *AuthRepositoryImpl) RegisterUser(ctx context.Context, req model.RegisterRequestModel) (*model.RegisterResponseModel, error) {
+	req.FullName = strings.TrimSpace(req.FullName)
+	req.NIK = strings.TrimSpace(req.NIK)
+	req.Phone = strings.TrimSpace(req.Phone)
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
+	req.Username = strings.TrimSpace(req.Username)
+	req.Password = strings.TrimSpace(req.Password)
+
 	hashedPassword, err := r.Hash(req.Password)
 	if err != nil {
 		return nil, err
@@ -122,7 +129,7 @@ func (r *AuthRepositoryImpl) RegisterUser(ctx context.Context, req model.Registe
 		req.FullName,
 		nullIfEmpty(req.NIK),
 		nullIfEmpty(req.Phone),
-		nullIfEmpty(strings.ToLower(strings.TrimSpace(req.Email))),
+		nullIfEmpty(req.Email),
 		req.Username,
 		hashedPassword,
 		false,
@@ -140,24 +147,11 @@ func (r *AuthRepositoryImpl) RegisterUser(ctx context.Context, req model.Registe
 	}
 
 	return &model.RegisterResponseModel{
-		Message: "registrasi berhasil",
-		User: model.UserModel{
-			UserId:       userID,
-			Nik:          req.NIK,
-			FullName:     req.FullName,
-			Phone:        req.Phone,
-			Email:        strings.ToLower(strings.TrimSpace(req.Email)),
-			Username:     req.Username,
-			RoleId:       2,
-			IsVerified:   false,
-			RegisteredAt: now,
-			CreatedAt:    now,
-			UpdatedAt:    now,
-		},
+		Message: fmt.Sprintf("registrasi berhasil untuk user %d", userID),
 	}, nil
 }
 
-func (r *AuthRepositoryImpl) ExistsByEmailOrUsernameOrPhone(ctx context.Context, email, username, phone string) (*model.UserExistResult, error) {
+func (r *AuthRepositoryImpl) ExistsByEmailOrUsernameOrPhone(ctx context.Context, email, username, phone string) (*model.UserExistRespModel, error) {
 	query := `
 		SELECT
 			MAX(CASE WHEN email = ? THEN 1 ELSE 0 END) AS email_exists,
@@ -178,7 +172,7 @@ func (r *AuthRepositoryImpl) ExistsByEmailOrUsernameOrPhone(ctx context.Context,
 		return nil, fmt.Errorf("check user existence: %w", err)
 	}
 
-	return &model.UserExistResult{
+	return &model.UserExistRespModel{
 		EmailExists:    emailExists == 1,
 		UsernameExists: usernameExists == 1,
 		PhoneExists:    phoneExists == 1,

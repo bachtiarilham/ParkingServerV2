@@ -1,10 +1,6 @@
 package helper
 
 type TarifModel struct {
-	ItemTarif []TarifModelItem `json:"itemTarif,omitempty"`
-}
-
-type TarifModelItem struct {
-	Kendaraan int64  `json:"kendaraan"`
-	Nominal   string `json:"nominal"`
+	Kendaraan string `json:"kendaraan"`
+	Nominal   int64  `json:"nominal"`
 }

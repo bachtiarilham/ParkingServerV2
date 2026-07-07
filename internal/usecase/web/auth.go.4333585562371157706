@@ -22,11 +22,11 @@ var (
 )
 
 type AuthUseCase struct {
-	repo        dashboard.Repository
+	repo       dashboard.Repository
 	sessionRepo mobilerepo.SessionRepository
-	jwtSecret   string
-	accessTTL   time.Duration
-	refreshTTL  time.Duration
+	jwtSecret  string
+	accessTTL  time.Duration
+	refreshTTL time.Duration
 }
 
 func NewAuthUseCase(
@@ -37,11 +37,11 @@ func NewAuthUseCase(
 	refreshTTL time.Duration,
 ) *AuthUseCase {
 	return &AuthUseCase{
-		repo:        repo,
+		repo:       repo,
 		sessionRepo: sessionRepo,
-		jwtSecret:   jwtSecret,
-		accessTTL:   accessTTL,
-		refreshTTL:  refreshTTL,
+		jwtSecret:  jwtSecret,
+		accessTTL:  accessTTL,
+		refreshTTL: refreshTTL,
 	}
 }
 
