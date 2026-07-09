@@ -67,6 +67,7 @@ func RegisterRoutes(
 	getPembayaranStatusUc *paymentUc.GetPembayaranStatusUseCase,
 	//helper
 	GetLokasiUc *helperUc.GetLokasiUseCase,
+	GetTarifUc *helperUc.GetTarifUseCase,
 
 	//setting
 	// getUserProfileUC *useruc.GetProfileUseCase,
@@ -100,6 +101,7 @@ func RegisterRoutes(
 	getPembayaranStatusHandler := paymentHandler.NewGetPembayaranStatusHandler(getPembayaranStatusUc)
 	//helper
 	getLokasiHandler := helperHandler.NewGetLocationHandler(GetLokasiUc)
+	getTarifHandler := helperHandler.NewGetTarifHandler(GetTarifUc)
 
 	// scanHandler := mobile_handler.NewScanHandler(submitQrUC, scanDetailUC)
 	// userHandler := shared_handler.NewUserHandler(getUserProfileUC)
@@ -125,6 +127,7 @@ func RegisterRoutes(
 	protectedGetPembayaranStatusHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(getPembayaranStatusHandler.Execute))
 	//helper
 	protectedGetLokasiHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(getLokasiHandler.Execute))
+	protectedGetTarifHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(getTarifHandler.Execute))
 
 	// protectedProfileHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(userHandler.GetCurrentUser))
 	// protectedQrGenerator := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(qrHandler.GenerateQR))
@@ -153,6 +156,7 @@ func RegisterRoutes(
 	mux.Handle("GET /api/v2/linespot/parking/{sessionId}/status", protectedGetPembayaranStatusHandler)
 	//helper
 	mux.Handle("GET /api/v2/linespot/get_lokasi", protectedGetLokasiHandler)
+	mux.Handle("GET /api/v2/linespot/get_tarif", protectedGetTarifHandler)
 
 	//route dengan otentikasi (middleware JWT)
 	// mux.Handle("GET /api/v2/linespot/qr/generate", protectedQrGenerator)

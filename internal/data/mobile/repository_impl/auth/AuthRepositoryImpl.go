@@ -3,10 +3,8 @@ package auth
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	model "modulegue/internal/domain/mobile/model/auth"
 	"modulegue/internal/domain/mobile/repository"
@@ -22,66 +20,65 @@ func NewAuthRepositoryImpl(db *sql.DB) repository.AuthRepository {
 	return &AuthRepositoryImpl{db: db}
 }
 
-func (r *AuthRepositoryImpl) LoginUser(ctx context.Context, identifier, password string) (*model.UserModel, error) {
-	identifier = strings.TrimSpace(identifier)
-	lookupColumn := detectIdentifierColumn(identifier)
+func (r *AuthRepositoryImpl) LoginUser(ctx context.Context, reqModel model.LoginRequestModel) (*model.TokenSetModel, *model.LoginRespModel, error) {
+	identifier := strings.TrimSpace(reqModel.Identity)
+	password := strings.TrimSpace(reqModel.Password)
+	if identifier == "" || password == "" {
+		return nil, nil, fmt.Errorf("identity and password are required")
+	}
 
 	query := `
-		SELECT
-			su.id,
-			su.role_id,
-			su.full_name,
-			su.nik,
-			su.phone_number,
-			su.email,
-			su.username,
-			su.password_hash,
-			su.is_verified,
-			su.registered_at,
-			su.created_at,
-			su.updated_at
-		FROM system_user su
-		WHERE ` + lookupColumn + ` = ?
-		LIMIT 1
+	SELECT
+		ui.id AS userId,
+		ui.role_id AS roleId,
+		ua.password_hash AS passwordHash
+	FROM user_identity ui
+	JOIN user_auth ua
+		ON ua.user_id = ui.id
+	JOIN master_role mr
+		ON mr.id = ui.role_id
+	WHERE
+		(
+			ui.username = ?
+			OR ui.email = ?
+			OR ui.phone_number = ?
+		)
+		AND ui.status = 'ACTIVE'
+		AND mr.is_active = 1
+		AND (
+			ua.locked_until IS NULL
+			OR ua.locked_until <= NOW()
+		)
+	LIMIT 1;
 	`
-
-	var user model.UserModel
-	var nik sql.NullString
-	var phone sql.NullString
-	var email sql.NullString
-	var passwordHash sql.NullString
-	var registeredAt sql.NullTime
-
-	err := r.db.QueryRowContext(ctx, query, identifier).Scan(
-		&user.UserId,
-		&user.RoleId,
-		&user.FullName,
-		&nik,
-		&phone,
-		&email,
-		&user.Username,
-		&passwordHash,
-		&user.IsVerified,
-		&registeredAt,
-		&user.CreatedAt,
-		&user.UpdatedAt,
+	var (
+		userID       int64
+		roleID       int64
+		passwordHash string
 	)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, sql.ErrNoRows
+
+	if err := r.db.QueryRowContext(
+		ctx,
+		query,
+		identifier,
+		identifier,
+		identifier,
+	).Scan(&userID, &roleID, &passwordHash); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil, fmt.Errorf("invalid credentials")
 		}
-		return nil, fmt.Errorf("login user query: %w", err)
+		return nil, nil, fmt.Errorf("login user: %w", err)
 	}
 
-	user.Nik = nik.String
-	user.Phone = phone.String
-	user.Email = email.String
-	user.PasswordHash = passwordHash.String
-	if registeredAt.Valid {
-		user.RegisteredAt = registeredAt.Time
+	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(password)); err != nil {
+		return nil, nil, fmt.Errorf("invalid credentials")
 	}
 
-	return &user, nil
+	return &model.TokenSetModel{}, &model.LoginRespModel{
+		UserId:       userID,
+		RoleId:       roleID,
+		PasswordHash: passwordHash,
+	}, nil
 }
 
 func (r *AuthRepositoryImpl) LogoutUser(ctx context.Context, reqModel model.LogoutReqModel) error {
@@ -91,7 +88,38 @@ func (r *AuthRepositoryImpl) LogoutUser(ctx context.Context, reqModel model.Logo
 	return nil
 }
 
-func (r *AuthRepositoryImpl) RegisterUser(ctx context.Context, req model.RegisterRequestModel) (*model.RegisterResponseModel, error) {
+func (r *AuthRepositoryImpl) FindByID(ctx context.Context, id int64) (*model.LoginRespModel, error) {
+	query := `
+	SELECT
+		ua.password_hash AS passwordHash
+	FROM user_auth ua
+	JOIN user_identity ui
+		ON ui.id = ua.user_id
+	WHERE ua.user_id = ?
+	AND ui.status = 'ACTIVE'
+	LIMIT 1;
+	`
+	var (
+		passwordHash string
+	)
+
+	if err := r.db.QueryRowContext(
+		ctx,
+		query,
+		id,
+	).Scan(&passwordHash); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("invalid credentials")
+		}
+		return nil, fmt.Errorf("login user: %w", err)
+	}
+
+	return &model.LoginRespModel{
+		PasswordHash: passwordHash,
+	}, nil
+}
+
+func (r *AuthRepositoryImpl) RegisterUser(ctx context.Context, req model.RegisterRequestModel) error {
 	req.FullName = strings.TrimSpace(req.FullName)
 	req.NIK = strings.TrimSpace(req.NIK)
 	req.Phone = strings.TrimSpace(req.Phone)
@@ -101,143 +129,192 @@ func (r *AuthRepositoryImpl) RegisterUser(ctx context.Context, req model.Registe
 
 	hashedPassword, err := r.Hash(req.Password)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	now := time.Now()
-	insertQuery := `
-		INSERT INTO system_user (
-			role_id,
-			full_name,
-			nik,
-			phone_number,
-			email,
-			username,
-			password_hash,
-			employment_status,
-			is_verified,
-			registered_at,
-			created_at,
-			updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?)
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	queryInsertUser := `
+	INSERT INTO user_identity (
+		full_name,
+		nik,
+		phone_number,
+		email,
+		username,
+		role_id,
+		is_verified,
+		status,
+		created_at,
+		updated_at
+	)
+	VALUES (
+		?, ?, ?, ?, ?,
+		(SELECT id FROM master_role WHERE role_code = 'CUSTOMER' LIMIT 1),
+		0,
+		'ACTIVE',
+		NOW(),
+		NOW()
+	);
 	`
 
-	result, err := r.db.ExecContext(
+	result, err := tx.ExecContext(
 		ctx,
-		insertQuery,
-		1,
+		queryInsertUser,
 		req.FullName,
-		nullIfEmpty(req.NIK),
-		nullIfEmpty(req.Phone),
-		nullIfEmpty(req.Email),
+		req.NIK,
+		req.Phone,
+		req.Email,
 		req.Username,
-		hashedPassword,
-		false,
-		now,
-		now,
-		now,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("insert system_user: %w", err)
+		return err
 	}
 
-	userID, err := result.LastInsertId()
+	userId, err := result.LastInsertId()
 	if err != nil {
-		return nil, fmt.Errorf("get inserted user id: %w", err)
+		return err
 	}
 
-	return &model.RegisterResponseModel{
-		Message: fmt.Sprintf("registrasi berhasil untuk user %d", userID),
-	}, nil
+	queryInsertAuth := `
+	INSERT INTO user_auth (
+		user_id,
+		password_hash,
+		failed_login_count,
+		created_at,
+		updated_at
+	)
+	VALUES (?, ?, 0, NOW(), NOW());
+	`
+
+	_, err = tx.ExecContext(ctx, queryInsertAuth, userId, hashedPassword)
+	if err != nil {
+		return err
+	}
+
+	queryInsertProfile := `
+	INSERT INTO user_profile (
+		user_id,
+		language,
+		timezone,
+		created_at,
+		updated_at
+	)
+	VALUES (?, 'id', 'Asia/Jakarta', NOW(), NOW());
+	`
+
+	_, err = tx.ExecContext(ctx, queryInsertProfile, userId)
+	if err != nil {
+		return err
+	}
+
+	queryInsertWallet := `
+	INSERT INTO wallet_account (
+		user_id,
+		wallet_type_id,
+		current_balance_amount,
+		is_active,
+		created_at,
+		updated_at
+	)
+	SELECT
+		?,
+		id,
+		0,
+		1,
+		NOW(),
+		NOW()
+	FROM master_wallet_type
+	WHERE wallet_type_code = 'BALANCE';
+	`
+
+	_, err = tx.ExecContext(ctx, queryInsertWallet, userId)
+	if err != nil {
+		return err
+	}
+
+	queryInsertSummary := `
+	INSERT INTO summary_user_home (
+		user_id,
+		role_id,
+		full_name,
+		username,
+		email,
+		phone_number,
+		photo_url,
+		saldo,
+		updated_at
+	)
+	SELECT
+		ui.id,
+		ui.role_id,
+		ui.full_name,
+		ui.username,
+		ui.email,
+		ui.phone_number,
+		ui.photo_url,
+		0,
+		NOW()
+	FROM user_identity ui
+	WHERE ui.id = ?;
+	`
+
+	_, err = tx.ExecContext(ctx, queryInsertSummary, userId)
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	_, _ = result.RowsAffected()
+	return nil
+
 }
 
-func (r *AuthRepositoryImpl) ExistsByEmailOrUsernameOrPhone(ctx context.Context, email, username, phone string) (*model.UserExistRespModel, error) {
+func (r *AuthRepositoryImpl) ExistsByIdentity(ctx context.Context, nik, email, username, phone string) (*model.UserExistRespModel, error) {
 	query := `
-		SELECT
-			COALESCE(MAX(CASE WHEN email = ? THEN TRUE ELSE FALSE END), FALSE) AS email_exists,
-			COALESCE(MAX(CASE WHEN username = ? THEN TRUE ELSE FALSE END), FALSE) AS username_exists,
-			COALESCE(MAX(CASE WHEN phone_number = ? THEN TRUE ELSE FALSE END), FALSE) AS phone_exists
-		FROM system_user
-		WHERE email = ? OR username = ? OR phone_number = ?
+	SELECT
+    CASE WHEN EXISTS (
+        SELECT 1 FROM user_identity WHERE nik = ? LIMIT 1
+    ) THEN 1 ELSE 0 END AS nikUsed,
+
+    CASE WHEN EXISTS (
+        SELECT 1 FROM user_identity WHERE phone_number = ? LIMIT 1
+    ) THEN 1 ELSE 0 END AS phoneUsed,
+
+    CASE WHEN EXISTS (
+        SELECT 1 FROM user_identity WHERE email = ? LIMIT 1
+    ) THEN 1 ELSE 0 END AS emailUsed,
+
+    CASE WHEN EXISTS (
+        SELECT 1 FROM user_identity WHERE username = ? LIMIT 1
+    ) THEN 1 ELSE 0 END AS usernameUsed;
 	`
-	// MAX(CASE WHEN email = ? THEN 1 ELSE 0 END) AS email_exists,
-	// 			MAX(CASE WHEN username = ? THEN 1 ELSE 0 END) AS username_exists,
-	// 			MAX(CASE WHEN phone_number = ? THEN 1 ELSE 0 END) AS phone_exists
-	var emailExists, usernameExists, phoneExists int
+	var nikExists, emailExists, usernameExists, phoneExists int
 	err := r.db.QueryRowContext(
 		ctx,
 		query,
-		email, username, phone,
-		email, username, phone,
-	).Scan(&emailExists, &usernameExists, &phoneExists)
+		nik,
+		phone,
+		email,
+		username,
+	).Scan(&nikExists, &emailExists, &usernameExists, &phoneExists)
 	if err != nil {
 		return nil, fmt.Errorf("check user existence: %w", err)
 	}
 
 	return &model.UserExistRespModel{
+		NikExists:      nikExists == 1,
 		EmailExists:    emailExists == 1,
 		UsernameExists: usernameExists == 1,
 		PhoneExists:    phoneExists == 1,
 	}, nil
-}
-
-func (r *AuthRepositoryImpl) FindByID(ctx context.Context, id int64) (*model.UserModel, error) {
-	query := `
-		SELECT
-			su.id,
-			su.role_id,
-			su.full_name,
-			su.nik,
-			su.phone_number,
-			su.email,
-			su.username,
-			su.password_hash,
-			su.is_verified,
-			su.registered_at,
-			su.created_at,
-			su.updated_at
-		FROM system_user su
-		WHERE su.id = ?
-		LIMIT 1
-	`
-
-	var user model.UserModel
-	var nik sql.NullString
-	var phone sql.NullString
-	var email sql.NullString
-	var passwordHash sql.NullString
-	var registeredAt sql.NullTime
-
-	err := r.db.QueryRowContext(ctx, query, id).Scan(
-		&user.UserId,
-		&user.RoleId,
-		&user.FullName,
-		&nik,
-		&phone,
-		&email,
-		&user.Username,
-		&passwordHash,
-		&user.IsVerified,
-		&registeredAt,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, sql.ErrNoRows
-		}
-		return nil, fmt.Errorf("find user by id: %w", err)
-	}
-
-	user.Nik = nik.String
-	user.Phone = phone.String
-	user.Email = email.String
-	user.PasswordHash = passwordHash.String
-	if registeredAt.Valid {
-		user.RegisteredAt = registeredAt.Time
-	}
-
-	return &user, nil
 }
 
 func (r *AuthRepositoryImpl) ChangePasswordUser(ctx context.Context, userID int64, newPasswordHash string) error {

@@ -19,7 +19,6 @@ import (
 	subscriptionrepo "modulegue/internal/data/mobile/repository_impl/subcription"
 	webdelivery "modulegue/internal/delivery/web"
 	authmodel "modulegue/internal/domain/mobile/model/auth"
-	mobileusecase "modulegue/internal/domain/mobile/usecase"
 	authuc "modulegue/internal/domain/mobile/usecase/auth"
 	helperuc "modulegue/internal/domain/mobile/usecase/helper"
 	homeuc "modulegue/internal/domain/mobile/usecase/home"
@@ -48,7 +47,7 @@ func NewRouter(
 	riwayatRepository := riwayatrepo.NewRiwayatRepositoryImpl(db)
 	subscriptionRepository := subscriptionrepo.NewSubscriptionRepositoryImpl(db)
 	paymentRepository := paymentrepo.NewPaymentRepositoryImpl(db)
-	helperRepository := helperrepo.NewGetLocationRepositoryImpl(db)
+	helperRepository := helperrepo.NewHelperRepositoryImpl(db)
 
 	registerUC := authuc.NewRegisterUseCase(authRepository)
 	loginUC := authuc.NewLoginUseCase(
@@ -68,7 +67,6 @@ func NewRouter(
 		refreshTTL,
 	)
 	changePasswordUC := authuc.NewChangePasswordUseCase(authRepository, sessionRepository)
-	getProfileUC := mobileusecase.NewGetProfileUseCase(authRepository)
 	homeUC := homeuc.NewGetHomeUseCase(homeRepository)
 	laporanUC := laporanuc.NewGetLaporanUseCase(laporanRepository)
 	riwayatUC := riwayatuc.NewGetRiwayatUseCase(riwayatRepository)
@@ -77,9 +75,7 @@ func NewRouter(
 	postPaymentParkingUC := paymentuc.NewPostPaymentParkingUseCase(paymentRepository)
 	getPembayaranStatusUC := paymentuc.NewGetPembayaranStatusUseCase(paymentRepository)
 	getLokasiUC := helperuc.NewGetLokasiUseCase(helperRepository)
-
-	_ = changePasswordUC
-	_ = getProfileUC
+	getTarifUC := helperuc.NewGetTarifUseCase(helperRepository)
 
 	mobileapi.RegisterRoutes(
 		mux,
@@ -96,6 +92,7 @@ func NewRouter(
 		postPaymentParkingUC,
 		getPembayaranStatusUC,
 		getLokasiUC,
+		getTarifUC,
 		queue,
 		logger,
 	)

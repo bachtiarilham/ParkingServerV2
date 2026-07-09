@@ -41,7 +41,7 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.loginUc.Execute(r.Context(), *requestModel)
+	token, _, err := h.loginUc.Execute(r.Context(), *requestModel)
 	if err != nil {
 		if errors.Is(err, errorstring.ErrInvalidCredentials) {
 			response.Error(w, http.StatusUnauthorized, "identity atau password salah")
@@ -56,7 +56,7 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := mapper.ToLoginResponseDto(result)
+	resp := mapper.ToTokenSetDto(token)
 	if resp == nil {
 		response.Error(w, http.StatusInternalServerError, "terjadi kesalahan internal")
 		return

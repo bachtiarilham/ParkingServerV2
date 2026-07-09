@@ -34,7 +34,7 @@ func Load() Config {
 		// DBHost:             getEnv("DB_HOST", "127.0.0.1"),
 		DBHost:             getEnv("DB_HOST", "localhost"),
 		DBPort:             getEnv("DB_PORT", "3306"),
-		DBName:             getEnv("DB_NAME", "parkir_v2"),
+		DBName:             getEnv("DB_NAME", "parkir_v3"),
 		DBUser:             getEnv("DB_USER", "root"),
 		DBPassword:         getEnvAny([]string{"DB_PASSWORD", "DB_PASS"}, "root"),
 		JWTSecret:          getEnv("JWT_SECRET", "saya-janji-ngoding-pakai-doa-dan-kesabaran-ekstra"),

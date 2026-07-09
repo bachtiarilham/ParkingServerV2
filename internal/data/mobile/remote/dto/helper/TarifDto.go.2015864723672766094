@@ -1,6 +1,0 @@
-package helper
-
-type TarifDto struct {
-	Kendaraan string `json:"kendaraan"`
-	Nominal   string `json:"nominal"`
-}

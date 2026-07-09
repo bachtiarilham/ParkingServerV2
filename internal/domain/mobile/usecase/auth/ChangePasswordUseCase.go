@@ -37,14 +37,12 @@ func (uc *ChangePasswordUseCase) Execute(ctx context.Context, reqModel model.Cha
 		return nil, fmt.Errorf("gagal mengambil data user: %w", err)
 	}
 
-	// 2. Verifikasi apakah OldPassword cocok dengan hash yang disimpan
-	if err := hash.Compare(currentUser.PasswordHash, reqModel.OldPassword); err != nil {
-		return nil, errorstring.ErrOldPasswordMismatch
+	if reqModel.OldPassword == reqModel.NewPassword {
+		return nil, errorstring.ErrNewPasswordSameAsOld
 	}
 
-	// 3. (Opsional) Cegah user mengganti password dengan password lama yang sama
-	if hash.Compare(currentUser.PasswordHash, reqModel.NewPassword) == nil {
-		return nil, errorstring.ErrNewPasswordSameAsOld
+	if err := hash.Compare(currentUser.PasswordHash, reqModel.OldPassword); err != nil {
+		return nil, errorstring.ErrOldPasswordMismatch
 	}
 
 	// 4. Hash password baru
@@ -67,7 +65,7 @@ func (uc *ChangePasswordUseCase) Execute(ctx context.Context, reqModel model.Cha
 	// Tapi ini bisa merusak UX jika user sedang aktif di banyak tab/perangkat.
 	// Kita bisa menambahkan opsi ini nanti jika diperlukan.
 	// domain_auth.Repository.DeleteAllSessions(ctx, currentUser.ID)
-	err = uc.sessionRepo.DeleteAllSessions(ctx, currentUser.UserId) // <-- Gunakan uc.sessionRepo
+	err = uc.sessionRepo.DeleteAllSessions(ctx, userID) // <-- Gunakan uc.sessionRepo
 	if err != nil {
 		// Log error, tapi jangan hentikan proses change password krn ini opsional
 		// log.Printf("Gagal hapus session setelah ganti password user %d: %v", currentUser.ID, err)

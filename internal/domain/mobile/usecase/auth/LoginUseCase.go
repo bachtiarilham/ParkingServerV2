@@ -40,20 +40,19 @@ func NewLoginUseCase(
 	}
 }
 
-func (uc *LoginUseCase) Execute(ctx context.Context, reqModel model.LoginRequestModel) (*model.LoginResponseModel, error) {
+func (uc *LoginUseCase) Execute(ctx context.Context, reqModel model.LoginRequestModel) (*model.TokenSetModel, *model.LoginRespModel, error) {
 	if (reqModel.Identity == "") || reqModel.Password == "" {
-		return nil, ErrInvalidInput
+		return nil, nil, ErrInvalidInput
 	}
 
-	// 1. Cari user berdasarkan identity
-	hasilLogin, err := uc.authRepo.LoginUser(ctx, reqModel.Identity, reqModel.Password)
+	_, hasilLogin, err := uc.authRepo.LoginUser(ctx, reqModel)
 	if err != nil {
-		return nil, errorstring.ErrInvalidCredentials
+		return nil, nil, errorstring.ErrInvalidCredentials
 	}
 
 	// 2. Verifikasi password
 	if err := hash.Compare(hasilLogin.PasswordHash, reqModel.Password); err != nil {
-		return nil, errorstring.ErrInvalidCredentials
+		return nil, nil, errorstring.ErrInvalidCredentials
 	}
 
 	now := time.Now()
@@ -69,7 +68,7 @@ func (uc *LoginUseCase) Execute(ctx context.Context, reqModel model.LoginRequest
 		Type:       "access",
 	}, uc.jwtSecret)
 	if err != nil {
-		return nil, fmt.Errorf("generate access token: %w", err)
+		return nil, nil, fmt.Errorf("generate access token: %w", err)
 	}
 
 	// 4. Buat refresh token (TTL lebih panjang, tanpa expiry di payload — dicek dari DB)
@@ -84,7 +83,7 @@ func (uc *LoginUseCase) Execute(ctx context.Context, reqModel model.LoginRequest
 		Type:       "refresh",
 	}, uc.jwtSecret)
 	if err != nil {
-		return nil, fmt.Errorf("generate refresh token: %w", err)
+		return nil, nil, fmt.Errorf("generate refresh token: %w", err)
 	}
 
 	// 5. Simpan session ke DB
@@ -94,33 +93,17 @@ func (uc *LoginUseCase) Execute(ctx context.Context, reqModel model.LoginRequest
 		RefreshToken: refreshToken,
 		ExpiresAt:    refreshExp,
 	}); err != nil {
-		return nil, fmt.Errorf("save session: %w", err)
+		return nil, nil, fmt.Errorf("save session: %w", err)
 	}
 
-	return &model.LoginResponseModel{
-		UserModel: model.UserModel{
-			UserId:       hasilLogin.UserId,
-			Nik:          hasilLogin.Nik,
-			FullName:     hasilLogin.FullName,
-			Phone:        hasilLogin.Phone,
-			Email:        hasilLogin.Email,
-			Username:     hasilLogin.Username,
-			Password:     "",
-			PasswordHash: "",
-			RoleId:       hasilLogin.RoleId,
-			IsVerified:   hasilLogin.IsVerified,
-			Lokasi:       hasilLogin.Lokasi,
-			Zona:         hasilLogin.Zona,
-			Tarif:        hasilLogin.Tarif,
-			RegisteredAt: hasilLogin.RegisteredAt,
-			CreatedAt:    hasilLogin.CreatedAt,
-			UpdatedAt:    hasilLogin.UpdatedAt,
-		},
-		TokenSetModel: model.TokenSetModel{
+	return &model.TokenSetModel{
 			AccessToken:      accessToken,
 			RefreshToken:     refreshToken,
 			TokenType:        "Bearer",
 			ExpiresInSeconds: accessExp.Unix(),
-		},
-	}, nil
+		}, &model.LoginRespModel{
+			UserId:       hasilLogin.UserId,
+			RoleId:       hasilLogin.RoleId,
+			PasswordHash: hasilLogin.PasswordHash,
+		}, nil
 }

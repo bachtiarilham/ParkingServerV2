@@ -32,11 +32,20 @@ func (h *HomeHandler) GetDashboard(w http.ResponseWriter, r *http.Request) {
 		RoleID: roleID,
 	}
 
-	result, err := h.getDashboardUC.Execute(r.Context(), input)
-	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "gagal memuat dashboard")
-		return
+	if roleID == 1 {
+		result, err := h.getDashboardUC.ExecuteCustomerHome(r.Context(), input)
+		if err != nil {
+			response.Error(w, http.StatusInternalServerError, "gagal memuat dashboard")
+			return
+		}
+		response.Success(w, http.StatusOK, "Dashboard dimuat", mapper.ToCustomerHomeResponse(result))
+	} else if roleID == 3 {
+		result, err := h.getDashboardUC.ExecuteJukirHome(r.Context(), input)
+		if err != nil {
+			response.Error(w, http.StatusInternalServerError, "gagal memuat dashboard")
+			return
+		}
+		response.Success(w, http.StatusOK, "Dashboard dimuat", mapper.ToJukirHomeResponse(result))
 	}
 
-	response.Success(w, http.StatusOK, "Dashboard dimuat", mapper.ToHomeResponse(result))
 }

@@ -4,9 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
 
 	model "modulegue/internal/domain/mobile/model/home"
+	profileModel "modulegue/internal/domain/mobile/model/profile"
 	"modulegue/internal/domain/mobile/repository"
 )
 
@@ -18,8 +18,11 @@ func NewHomeRepositoryImpl(db *sql.DB) repository.HomeRepository {
 	return &HomeRepositoryImpl{db: db}
 }
 
-func (r *HomeRepositoryImpl) GetHome(ctx context.Context, reqModel model.GetHomeReqModel) (*model.HomeModel, error) {
-	profile, err := r.getProfile(ctx, reqModel.UserID)
+func (r *HomeRepositoryImpl) GetJukirHome(ctx context.Context, reqModel model.GetHomeReqModel) (*model.JukirHomeModel, error) {
+	var profile *profileModel.JukirModel
+	var err error
+
+	profile, err = r.getJukirProfile(ctx, reqModel.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +37,7 @@ func (r *HomeRepositoryImpl) GetHome(ctx context.Context, reqModel model.GetHome
 		return nil, err
 	}
 
-	return &model.HomeModel{
+	return &model.JukirHomeModel{
 		Profile:  profile,
 		Events:   events,
 		News:     news,
@@ -42,77 +45,346 @@ func (r *HomeRepositoryImpl) GetHome(ctx context.Context, reqModel model.GetHome
 	}, nil
 }
 
-func (r *HomeRepositoryImpl) getProfile(ctx context.Context, userID int64) (*model.ProfileModel, error) {
+func (r *HomeRepositoryImpl) GetCustomerHome(ctx context.Context, reqModel model.GetHomeReqModel) (*model.CustomerHomeModel, error) {
+	var profile *profileModel.CustomerModel
+	var err error
+
+	profile, err = r.getCustomerProfile(ctx, reqModel.UserID)
+	if err != nil {
+		return nil, err
+	}
+
+	events, news, err := r.getRecentEventsAndNews(ctx, 10, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	warnings, err := r.getWarnings(ctx, reqModel.UserID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.CustomerHomeModel{
+		Profile:  profile,
+		Events:   events,
+		News:     news,
+		Warnings: warnings,
+	}, nil
+}
+
+func (r *HomeRepositoryImpl) getCustomerProfile(ctx context.Context, userID int64) (*profileModel.CustomerModel, error) {
 	query := `
+	SELECT
+		ui.id AS user_id,
+		ui.full_name,
+		ui.username,
+		ui.email,
+		ui.phone_number,
+		ui.photo_url,
+
+		mr.role_code,
+		mr.role_name,
+
+		COALESCE(suh.saldo, 0) AS saldo,
+
+		sch.active_membership_id,
+		sch.membership_package_name,
+		sch.membership_expired_at,
+
+		mp.package_code AS membership_package_code,
+		mp.package_name AS membership_package_real_name,
+		mu.status AS membership_status,
+
+		sch.active_parking_session_id,
+		sch.total_parking_count,
+		COALESCE(sch.total_payment_amount, 0) AS total_payment_amount,
+
+		COALESCE(unread_notif.unread_count, 0) AS unread_notification_count
+
+	FROM user_identity ui
+
+	JOIN master_role mr
+		ON mr.id = ui.role_id
+
+	LEFT JOIN summary_user_home suh
+		ON suh.user_id = ui.id
+
+	LEFT JOIN summary_customer_home sch
+		ON sch.user_id = ui.id
+
+	LEFT JOIN membership_user mu
+		ON mu.id = sch.active_membership_id
+
+	LEFT JOIN membership_package mp
+		ON mp.id = mu.package_id
+
+	LEFT JOIN (
 		SELECT
-			su.id,
-			su.full_name AS name,
-			COALESCE(uw.current_balance_amount, 0) AS saldo,
-			oa.effective_to AS expired_date,
-			COALESCE(SUM(fpt.jukir_share), 0) AS pendapatan,
-			pl.location_name AS lokasi,
-			pa.area_name AS area,
-			pz.zone_name AS zona
-		FROM system_user su
-		LEFT JOIN user_wallet uw
-			ON uw.user_id = su.id
-			AND uw.wallet_type = 'emoney'
-		LEFT JOIN officer_assignment_current oa
-			ON oa.officer_user_id = su.id
-		LEFT JOIN parking_location pl
-			ON pl.id = oa.location_id
-		LEFT JOIN parking_area pa
-			ON pa.id = oa.area_id
-		LEFT JOIN parking_zone pz
-			ON pz.id = oa.zone_id
-		LEFT JOIN financial_parking_transaction fpt
-			ON fpt.jukir_user_id = su.id
-		WHERE su.id = ? 
-			GROUP BY
-			su.id, su.full_name, uw.current_balance_amount,
-			oa.effective_to, pl.location_name, pa.area_name, pz.zone_name;
+			user_id,
+			COUNT(*) AS unread_count
+		FROM notification_user
+		WHERE is_read = 0
+		GROUP BY user_id
+	) unread_notif
+		ON unread_notif.user_id = ui.id
+
+	WHERE ui.id = ?
+	AND mr.role_code = 'CUSTOMER'
+	AND ui.status = 'ACTIVE'
+
+	LIMIT 1;
 	`
 
 	var (
-		profile     model.ProfileModel
-		name        sql.NullString
-		saldo       sql.NullFloat64
-		expiredDate sql.NullTime
-		pendapatan  sql.NullFloat64
-		lokasi      sql.NullString
-		area        sql.NullString
-		zona        sql.NullString
+		profile                 profileModel.CustomerModel
+		userIDCol               sql.NullInt64
+		fullName                sql.NullString
+		username                sql.NullString
+		email                   sql.NullString
+		phone                   sql.NullString
+		photoURL                sql.NullString
+		roleCode                sql.NullString
+		roleName                sql.NullString
+		saldo                   sql.NullInt64
+		activeMembershipID      sql.NullInt64
+		membershipPackageName   sql.NullString
+		membershipExpiredAt     sql.NullTime
+		membershipPackageCode   sql.NullString
+		membershipStatus        sql.NullString
+		activeParkingSessionID  sql.NullInt64
+		totalParkingCount       sql.NullInt64
+		totalPaymentAmount      sql.NullInt64
+		unreadNotificationCount sql.NullInt64
 	)
 
 	err := r.db.QueryRowContext(ctx, query, userID).Scan(
-		&profile.ID,
-		&name,
+		&userIDCol,
+		&fullName,
+		&username,
+		&email,
+		&phone,
+		&photoURL,
+		&roleCode,
+		&roleName,
 		&saldo,
-		&expiredDate,
-		&pendapatan,
-		&lokasi,
-		&area,
-		&zona,
+		&activeMembershipID,
+		&membershipPackageName,
+		&membershipExpiredAt,
+		&membershipPackageCode,
+		&membershipStatus,
+		&activeParkingSessionID,
+		&totalParkingCount,
+		&totalPaymentAmount,
+		&unreadNotificationCount,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("user not found")
+			return nil, fmt.Errorf("customer not found")
 		}
-		return nil, fmt.Errorf("get profile: %w", err)
+		return nil, fmt.Errorf("get customer profile: %w", err)
 	}
 
-	profile.Name = name.String
-	profile.Saldo = int64(saldo.Float64)
-	profile.Pendapatan = int64(pendapatan.Float64)
-	profile.Lokasi = lokasi.String
-	profile.Area = area.String
-	profile.Zona = zona.String
-
-	if expiredDate.Valid {
-		profile.ExpiredDate = expiredDate.Time.Format(time.RFC3339)
+	profile.UserId = userIDCol.Int64
+	profile.FullName = fullName.String
+	profile.Username = username.String
+	profile.Email = email.String
+	profile.Phone = phone.String
+	profile.PhotoUrl = photoURL.String
+	profile.RoleCode = roleCode.String
+	profile.RoleName = roleName.String
+	profile.Saldo = saldo.Int64
+	profile.ActiveMembershipId = activeMembershipID.Int64
+	profile.MembershipPackageName = membershipPackageName.String
+	profile.MembershipPackageCode = membershipPackageCode.String
+	profile.MembershipStatus = membershipStatus.String
+	profile.ActiveParkingSession = activeParkingSessionID.Int64
+	profile.TotalParkingCount = totalParkingCount.Int64
+	profile.TotalPaymentAmount = totalPaymentAmount.Int64
+	profile.UnreadNotificationCount = unreadNotificationCount.Int64
+	if membershipExpiredAt.Valid {
+		profile.MembershipExpiredAt = membershipExpiredAt.Time
 	}
 
 	return &profile, nil
+
+}
+
+func (r *HomeRepositoryImpl) getJukirProfile(ctx context.Context, userID int64) (*profileModel.JukirModel, error) {
+	query := `
+		SELECT
+			ui.id AS user_id,
+			ui.full_name,
+			ui.username,
+			ui.email,
+			ui.phone_number,
+			ui.photo_url,
+
+			mr.role_code,
+			mr.role_name,
+
+			COALESCE(suh.saldo, 0) AS saldo,
+
+			aoc.location_id,
+			lp.location_code,
+			COALESCE(soh.location_name, lp.location_name) AS location_name,
+			lp.address,
+			lp.center_latitude,
+			lp.center_longitude,
+			lp.radius_meter,
+
+			aoc.area_id,
+			COALESCE(soh.area_name, la.area_name) AS area_name,
+
+			aoc.zone_id,
+			COALESCE(soh.zone_name, lz.zone_name) AS zone_name,
+
+			aoc.effective_from AS assignment_effective_from,
+			aoc.effective_to AS assignment_effective_to,
+
+			COALESCE(soh.today_income, 0) AS today_income,
+			COALESCE(soh.total_income, 0) AS total_income,
+			COALESCE(soh.today_transaction_count, 0) AS today_transaction_count,
+
+			COALESCE(unread_notif.unread_count, 0) AS unread_notification_count
+
+		FROM user_identity ui
+
+		JOIN master_role mr
+			ON mr.id = ui.role_id
+
+		LEFT JOIN summary_user_home suh
+			ON suh.user_id = ui.id
+
+		LEFT JOIN assignment_officer_current aoc
+			ON aoc.officer_user_id = ui.id
+
+		LEFT JOIN location_parking lp
+			ON lp.id = aoc.location_id
+
+		LEFT JOIN location_area la
+			ON la.id = aoc.area_id
+
+		LEFT JOIN location_zone lz
+			ON lz.id = aoc.zone_id
+
+		LEFT JOIN summary_officer_home soh
+			ON soh.user_id = ui.id
+
+		LEFT JOIN (
+			SELECT
+				user_id,
+				COUNT(*) AS unread_count
+			FROM notification_user
+			WHERE is_read = 0
+			GROUP BY user_id
+		) unread_notif
+			ON unread_notif.user_id = ui.id
+
+		WHERE ui.id = ?
+		AND mr.role_code = 'OFFICER'
+		AND ui.status = 'ACTIVE'
+
+	LIMIT 1;
+	`
+
+	var (
+		profile                 profileModel.JukirModel
+		userIDCol               sql.NullInt64
+		fullName                sql.NullString
+		username                sql.NullString
+		email                   sql.NullString
+		phone                   sql.NullString
+		photoURL                sql.NullString
+		roleCode                sql.NullString
+		roleName                sql.NullString
+		saldo                   sql.NullInt64
+		locationID              sql.NullInt64
+		locationCode            sql.NullString
+		locationName            sql.NullString
+		address                 sql.NullString
+		centerLatitude          sql.NullFloat64
+		centerLongitude         sql.NullFloat64
+		radiusMeter             sql.NullInt64
+		areaID                  sql.NullInt64
+		areaName                sql.NullString
+		zoneID                  sql.NullInt64
+		zoneName                sql.NullString
+		assignmentEffectiveFrom sql.NullTime
+		assignmentEffectiveTo   sql.NullTime
+		todayIncome             sql.NullInt64
+		totalIncome             sql.NullInt64
+		todayTransactionCount   sql.NullInt64
+		unreadNotificationCount sql.NullInt64
+	)
+
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(
+		&userIDCol,
+		&fullName,
+		&username,
+		&email,
+		&phone,
+		&photoURL,
+		&roleCode,
+		&roleName,
+		&saldo,
+		&locationID,
+		&locationCode,
+		&locationName,
+		&address,
+		&centerLatitude,
+		&centerLongitude,
+		&radiusMeter,
+		&areaID,
+		&areaName,
+		&zoneID,
+		&zoneName,
+		&assignmentEffectiveFrom,
+		&assignmentEffectiveTo,
+		&todayIncome,
+		&totalIncome,
+		&todayTransactionCount,
+		&unreadNotificationCount,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("jukir not found")
+		}
+		return nil, fmt.Errorf("get jukir profile: %w", err)
+	}
+
+	profile.UserId = userIDCol.Int64
+	profile.FullName = fullName.String
+	profile.Username = username.String
+	profile.Email = email.String
+	profile.Phone = phone.String
+	profile.PhotoUrl = photoURL.String
+	profile.RoleCode = roleCode.String
+	profile.RoleName = roleName.String
+	profile.Saldo = saldo.Int64
+	profile.LocationId = locationID.Int64
+	profile.LocationCode = locationCode.String
+	profile.LocationName = locationName.String
+	profile.Address = address.String
+	profile.CenterLatitude = centerLatitude.Float64
+	profile.CenterLongitude = centerLongitude.Float64
+	profile.RadiusMeter = radiusMeter.Int64
+	profile.AreaId = areaID.Int64
+	profile.AreaName = areaName.String
+	profile.ZoneId = zoneID.Int64
+	profile.ZoneName = zoneName.String
+	profile.TodayIncome = todayIncome.Int64
+	profile.TotalIncome = totalIncome.Int64
+	profile.TodayTransactionCount = todayTransactionCount.Int64
+	profile.UnreadNotificationCount = unreadNotificationCount.Int64
+	if assignmentEffectiveFrom.Valid {
+		profile.AssignmentEffectiveFrom = assignmentEffectiveFrom.Time
+	}
+	if assignmentEffectiveTo.Valid {
+		profile.AssignmentEffectiveTo = assignmentEffectiveTo.Time
+	}
+
+	return &profile, nil
+
 }
 
 func (r *HomeRepositoryImpl) getRecentEventsAndNews(ctx context.Context, limit, offset int) ([]model.EventsModel, []model.NewsModel, error) {

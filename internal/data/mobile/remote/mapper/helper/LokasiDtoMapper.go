@@ -5,9 +5,9 @@ import (
 	model "modulegue/internal/domain/mobile/model/helper"
 )
 
-func ToLokasiDto(src *model.LokasiModel) *dto.LokasiDto {
+func ToLokasiDto(src *model.LokasiModel) *dto.LokasiResponseDto {
 	if src == nil {
 		return nil
 	}
-	return &dto.LokasiDto{Lokasi: append([]string(nil), src.Lokasi...)}
+	return &dto.LokasiResponseDto{Lokasi: append([]string(nil), src.Lokasi...)}
 }

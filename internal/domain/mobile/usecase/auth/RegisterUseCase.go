@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 
 	model "modulegue/internal/domain/mobile/model/auth"
@@ -12,6 +11,7 @@ import (
 
 var (
 	ErrInvalidInput          = errors.New("tolong isi field yang wajib")
+	ErrNikAlreadyExists      = errors.New("NIK sudah terdaftar")
 	ErrEmailAlreadyExists    = errors.New("Email sudah terdaftar")
 	ErrPhoneAlreadyExists    = errors.New("Phone sudah terdaftar")
 	ErrUsernameAlreadyExists = errors.New("Username sudah terdaftar")
@@ -29,7 +29,7 @@ func NewRegisterUseCase(
 	}
 }
 
-func (uc *RegisterUseCase) Execute(ctx context.Context, reqModel model.RegisterRequestModel) (*model.RegisterResponseModel, error) {
+func (uc *RegisterUseCase) Execute(ctx context.Context, reqModel model.RegisterRequestModel) error {
 	reqModel.FullName = strings.TrimSpace(reqModel.FullName)
 	reqModel.NIK = strings.TrimSpace(reqModel.NIK)
 	reqModel.Phone = strings.TrimSpace(reqModel.Phone)
@@ -38,33 +38,29 @@ func (uc *RegisterUseCase) Execute(ctx context.Context, reqModel model.RegisterR
 	reqModel.Password = strings.TrimSpace(reqModel.Password)
 
 	if reqModel.Username == "" || reqModel.Email == "" || reqModel.Password == "" {
-		return nil, ErrInvalidInput
+		return ErrInvalidInput
 	}
 
-	exists, err := uc.AuthRepo.ExistsByEmailOrUsernameOrPhone(ctx, reqModel.Email, reqModel.Username, reqModel.Phone)
+	exists, err := uc.AuthRepo.ExistsByIdentity(ctx, reqModel.NIK, reqModel.Email, reqModel.Username, reqModel.Phone)
 	if err != nil {
-		return nil, err
+		return err
+	}
+	if exists.NikExists {
+		return ErrNikAlreadyExists
 	}
 	if exists.EmailExists {
-		return nil, ErrEmailAlreadyExists
+		return ErrEmailAlreadyExists
 	}
 	if exists.UsernameExists {
-		return nil, ErrUsernameAlreadyExists
+		return ErrUsernameAlreadyExists
 	}
 	if exists.PhoneExists {
-		return nil, ErrPhoneAlreadyExists
+		return ErrPhoneAlreadyExists
 	}
 
-	result, err := uc.AuthRepo.RegisterUser(ctx, reqModel)
-	if err != nil {
-		return nil, fmt.Errorf("register user: %w", err)
+	if err := uc.AuthRepo.RegisterUser(ctx, reqModel); err != nil {
+		return err
 	}
 
-	if result == nil {
-		return &model.RegisterResponseModel{
-			Message: "registrasi berhasil",
-		}, nil
-	}
-
-	return result, nil
+	return nil
 }

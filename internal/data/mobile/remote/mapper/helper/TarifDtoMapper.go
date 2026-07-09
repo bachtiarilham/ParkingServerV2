@@ -1,30 +1,28 @@
 package helper
 
 import (
-	"strconv"
-
 	dto "modulegue/internal/data/mobile/remote/dto/helper"
 	model "modulegue/internal/domain/mobile/model/helper"
 )
 
-func ToTarifDto(src *model.TarifModel) *dto.TarifDto {
+func ToTarifDto(src *model.TarifModel) *dto.TarifResponseDto {
 	if src == nil {
 		return nil
 	}
 
-	return &dto.TarifDto{
-		Kendaraan: src.Kendaraan,
-		Nominal:   strconv.FormatInt(src.Nominal, 10),
-	}
-}
-
-func ToTarifDtos(src []model.TarifModel) []dto.TarifDto {
-	out := make([]dto.TarifDto, 0, len(src))
-	for _, item := range src {
-		mapped := ToTarifDto(&item)
-		if mapped != nil {
-			out = append(out, *mapped)
+	items := make([]dto.TarifResponseItemDto, 0)
+	if src.TarifItem != nil {
+		for _, item := range *src.TarifItem {
+			items = append(items, dto.TarifResponseItemDto{
+				KendaraanId:   item.KendaraanId,
+				KendaraanKode: item.KendaraanKode,
+				KendaraanNama: item.KendaraanNama,
+				Nominal:       item.Nominal,
+			})
 		}
 	}
-	return out
+
+	return &dto.TarifResponseDto{
+		TarifResponseItemDto: items,
+	}
 }

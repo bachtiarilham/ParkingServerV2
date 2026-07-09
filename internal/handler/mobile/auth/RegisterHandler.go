@@ -45,7 +45,7 @@ func (h *RegisterHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.registerUc.Execute(r.Context(), *input)
+	err := h.registerUc.Execute(r.Context(), *input)
 	if err != nil {
 		switch {
 		case errors.Is(err, usecase.ErrInvalidInput):
@@ -62,11 +62,5 @@ func (h *RegisterHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := mapper.ToRegisterResponseDto(result)
-	if resp == nil {
-		response.Error(w, http.StatusInternalServerError, "terjadi kesalahan internal")
-		return
-	}
-
-	response.Success(w, http.StatusCreated, "registrasi berhasil", resp)
+	response.Success(w, http.StatusCreated, "registrasi berhasil", nil)
 }
