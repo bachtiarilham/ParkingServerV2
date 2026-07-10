@@ -10,7 +10,10 @@ func ToLoginRequestModel(src *dto.LoginRequestDto) *model.LoginRequestModel {
 		return nil
 	}
 	return &model.LoginRequestModel{
-		Identity: src.Identity,
-		Password: src.Password,
+		Identity:   src.Identity,
+		Password:   src.Password,
+		DeviceId:   src.DeviceId,
+		DeviceName: src.DeviceName,
+		FcmToken:   src.FcmToken,
 	}
 }

@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
-	"time"
 
 	"modulegue/config"
 	"modulegue/core/queue"
@@ -37,8 +36,8 @@ func NewRouter(
 	mux := http.NewServeMux()
 	workerPool := worker.NewWorkerPool(queue, cfg.QueueWorkerCount, logger)
 
-	accessTTL := time.Duration(cfg.AccessTokenMinutes) * time.Minute
-	refreshTTL := time.Duration(cfg.RefreshTokenHours) * time.Hour
+	accessTTL := cfg.AccessTokenMinutes
+	refreshTTL := cfg.RefreshTokenHours
 
 	authRepository := authrepo.NewAuthRepositoryImpl(db)
 	sessionRepository := authrepo.NewSessionRepositoryImpl(db)

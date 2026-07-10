@@ -7,7 +7,6 @@ import (
 	"modulegue/core/hash"
 	model "modulegue/internal/domain/mobile/model/auth"
 	"modulegue/internal/domain/mobile/repository"
-	"modulegue/internal/middleware"
 )
 
 type ChangePasswordUseCase struct {
@@ -27,12 +26,7 @@ func NewChangePasswordUseCase(
 
 func (uc *ChangePasswordUseCase) Execute(ctx context.Context, reqModel model.ChangePassReqModel) (*model.ChangePassRespModel, error) {
 	// 1. Ambil user dari repository berdasarkan userID dari context
-	userID, ok := middleware.UserIDFromContext(ctx)
-	if !ok {
-		// Jika userID tidak ditemukan di context, berarti otentikasi gagal sebelumnya
-		return nil, fmt.Errorf("user not authenticated: %w", ErrLogoutFailed)
-	}
-	currentUser, err := uc.authRepo.FindByID(ctx, userID)
+	currentUser, err := uc.authRepo.FindByID(ctx, reqModel.UserId)
 	if err != nil {
 		return nil, fmt.Errorf("gagal mengambil data user: %w", err)
 	}
@@ -52,23 +46,15 @@ func (uc *ChangePasswordUseCase) Execute(ctx context.Context, reqModel model.Cha
 	}
 
 	// 5. Update password user di database
-	currentUser.PasswordHash = newHashedPassword
-	// Jika FindByID mengembalikan pointer, kamu bisa langsung update
-	// Jika tidak, kamu mungkin perlu method Update(*user.User)
-	err = uc.authRepo.ChangePasswordUser(ctx, currentUser.UserId, newHashedPassword) // Asumsikan method UpdatePassword ada
+	err = uc.authRepo.ChangePasswordUser(ctx, reqModel.UserId, newHashedPassword) // Asumsikan method UpdatePassword ada
 	if err != nil {
 		return nil, fmt.Errorf("gagal menyimpan password baru: %w", err)
 	}
 
-	// 6. (Opsional) Hapus semua session user (force logout)
-	// Ini adalah langkah keamanan: karena password berubah, session lama mungkin tidak lagi valid.
-	// Tapi ini bisa merusak UX jika user sedang aktif di banyak tab/perangkat.
-	// Kita bisa menambahkan opsi ini nanti jika diperlukan.
-	// domain_auth.Repository.DeleteAllSessions(ctx, currentUser.ID)
-	err = uc.sessionRepo.DeleteAllSessions(ctx, userID) // <-- Gunakan uc.sessionRepo
+	// 6. force logout
+	err = uc.sessionRepo.DeleteAllSessions(ctx, reqModel.UserId) // <-- Gunakan uc.sessionRepo
 	if err != nil {
-		// Log error, tapi jangan hentikan proses change password krn ini opsional
-		// log.Printf("Gagal hapus session setelah ganti password user %d: %v", currentUser.ID, err)
+		return nil, fmt.Errorf("Gagal hapus session setelah ganti password user: %w", err)
 	}
 
 	return &model.ChangePassRespModel{

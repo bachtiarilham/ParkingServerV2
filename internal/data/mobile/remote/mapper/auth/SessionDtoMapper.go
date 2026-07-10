@@ -9,7 +9,6 @@ func ToTokenSetDto(result *model.TokenSetModel) *dto.TokenSetDto {
 	return &dto.TokenSetDto{
 		AccessToken:      result.AccessToken,
 		RefreshToken:     result.RefreshToken,
-		TokenType:        "Bearer",
 		ExpiresInSeconds: result.ExpiresInSeconds,
 	}
 }

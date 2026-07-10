@@ -32,14 +32,15 @@ func (h *HomeHandler) GetDashboard(w http.ResponseWriter, r *http.Request) {
 		RoleID: roleID,
 	}
 
-	if roleID == 1 {
+	switch roleID {
+	case 1:
 		result, err := h.getDashboardUC.ExecuteCustomerHome(r.Context(), input)
 		if err != nil {
 			response.Error(w, http.StatusInternalServerError, "gagal memuat dashboard")
 			return
 		}
 		response.Success(w, http.StatusOK, "Dashboard dimuat", mapper.ToCustomerHomeResponse(result))
-	} else if roleID == 3 {
+	case 2:
 		result, err := h.getDashboardUC.ExecuteJukirHome(r.Context(), input)
 		if err != nil {
 			response.Error(w, http.StatusInternalServerError, "gagal memuat dashboard")

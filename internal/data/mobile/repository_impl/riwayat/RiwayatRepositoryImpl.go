@@ -22,10 +22,7 @@ func NewRiwayatRepositoryImpl(db *sql.DB) repository.RiwayatRepository {
 func (r *RiwayatRepositoryImpl) GetRiwayat(ctx context.Context, req model.RiwayatRequestModel) (*model.RiwayatModel, error) {
 	startDate := strings.TrimSpace(req.StartDate)
 	endDate := strings.TrimSpace(req.EndDate)
-	lokasi := strings.TrimSpace(req.Lokasi)
 	statusFilter := ""
-	paymentFilter := strings.TrimSpace(req.Payment)
-	vehicleFilter := strings.TrimSpace(req.Vehicle)
 
 	if startDate == "" {
 		startDate = time.Now().Format("2006-01-02")
@@ -36,38 +33,107 @@ func (r *RiwayatRepositoryImpl) GetRiwayat(ctx context.Context, req model.Riwaya
 
 	query := `
 		SELECT
-			DATE_FORMAT(COALESCE(fpt.paid_at, fpt.occurred_at), '%Y-%m-%d') AS section_date,
-			fpt.transaction_code,
-			COALESCE(fpt.plate_number, ps.plate_number, '') AS plate_number,
-			COALESCE(vt.vehicle_type_name, '') AS vehicle_type,
-			DATE_FORMAT(COALESCE(fpt.paid_at, fpt.occurred_at), '%Y-%m-%d %H:%i:%s') AS item_time,
-			fpt.final_amount,
-			CASE
-				WHEN UPPER(fpt.operation_type) IN ('ENTRY', 'MASUK', 'CHECKIN') THEN 1
-				ELSE 0
-			END AS is_entry
+			DATE(fpt.paid_at) AS tanggal,
+
+			fpt.id AS transactionId,
+			fpt.transaction_code AS transactionCode,
+
+			fpt.session_id AS sessionId,
+
+			fpt.plate_number AS plateNumber,
+
+			mvt.id AS vehicleTypeId,
+			mvt.vehicle_type_code AS vehicleTypeCode,
+			mvt.vehicle_type_name AS vehicleTypeName,
+
+			mpm.id AS paymentMethodId,
+			mpm.payment_method_code AS paymentMethodCode,
+			mpm.payment_method_name AS paymentMethodName,
+
+			lp.id AS locationId,
+			lp.location_name AS locationName,
+			lp.address AS locationAddress,
+
+			la.id AS areaId,
+			la.area_name AS areaName,
+
+			lz.id AS zoneId,
+			lz.zone_name AS zoneName,
+
+			fpt.base_amount AS baseAmount,
+			fpt.discount_amount AS discountAmount,
+			fpt.final_amount AS finalAmount,
+			fpt.company_share AS companyShare,
+			fpt.jukir_share AS jukirShare,
+			fpt.tax_amount AS taxAmount,
+			fpt.fee_amount AS feeAmount,
+
+			fpt.transaction_status AS transactionStatus,
+			fpt.operation_type AS operationType,
+
+			fpt.occurred_at AS occurredAt,
+			fpt.paid_at AS paidAt,
+			fpt.created_at AS createdAt
+
 		FROM financial_parking_transaction fpt
-		LEFT JOIN parking_session ps ON ps.id = fpt.session_id
-		LEFT JOIN vehicle_type vt ON vt.id = fpt.vehicle_type_id
-		LEFT JOIN parking_location pl ON pl.id = fpt.location_id
-		WHERE DATE(fpt.occurred_at) BETWEEN ? AND ?
-		  AND (? = '' OR pl.location_name = ? OR pl.location_code = ?)
-		  AND (? = '' OR UPPER(COALESCE(fpt.transaction_status, '')) = UPPER(?))
-		  AND (? = '' OR UPPER(COALESCE(CAST(fpt.payment_method AS CHAR), '')) = UPPER(?))
-		  AND (? = '' OR UPPER(vt.vehicle_type_name) = UPPER(?) OR UPPER(vt.vehicle_type_code) = UPPER(?))
-		  AND (? = 0 OR fpt.customer_user_id = ? OR fpt.jukir_user_id = ? OR fpt.officer_user_id = ?)
-		  AND UPPER(COALESCE(fpt.transaction_status, '')) <> 'VOID'
-		ORDER BY COALESCE(fpt.paid_at, fpt.occurred_at) DESC
+
+		JOIN master_vehicle_type mvt
+			ON mvt.id = fpt.vehicle_type_id
+
+		JOIN master_payment_method mpm
+			ON mpm.id = fpt.payment_method_id
+
+		JOIN location_parking lp
+			ON lp.id = fpt.location_id
+
+		LEFT JOIN location_area la
+			ON la.id = fpt.area_id
+
+		LEFT JOIN location_zone lz
+			ON lz.id = fpt.zone_id
+
+		WHERE
+			(
+				fpt.customer_user_id = ?
+				OR fpt.jukir_user_id = ?
+				OR fpt.officer_user_id = ?
+			)
+
+			AND fpt.transaction_status = 'SUCCESS'
+
+			AND fpt.paid_at >= DATE(?)
+			AND fpt.paid_at < DATE_ADD(DATE(?), INTERVAL 1 DAY)
+
+			AND (
+				? = 'SEMUA'
+				OR mpm.payment_method_code = ?
+			)
+
+			AND (
+				? = 'SEMUA'
+				OR mvt.vehicle_type_code = ?
+			)
+
+			AND (
+				? = 0
+				OR fpt.location_id = ?
+			)
+
+		ORDER BY
+			DATE(fpt.paid_at) DESC,
+			fpt.paid_at DESC;
 	`
 
 	rows, err := r.db.QueryContext(
 		ctx,
 		query,
+		req.UserID, req.UserID, req.UserID,
 		startDate, endDate,
-		lokasi, lokasi, lokasi,
+		req.PaymentCode, req.PaymentCode,
+		req.VehicleCode, req.VehicleCode,
+		req.LokasiCode, req.LokasiCode,
 		statusFilter, statusFilter,
-		paymentFilter, paymentFilter,
-		vehicleFilter, vehicleFilter, vehicleFilter,
+		req.PaymentCode, req.PaymentCode,
 		req.UserID, req.UserID, req.UserID, req.UserID,
 	)
 	if err != nil {

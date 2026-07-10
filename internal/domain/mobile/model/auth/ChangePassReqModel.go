@@ -1,9 +1,7 @@
 package auth
 
 type ChangePassReqModel struct {
-	Username    string
-	Email       string
-	Phone       string
+	UserId      int64
 	OldPassword string
 	NewPassword string
 }

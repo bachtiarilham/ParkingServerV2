@@ -90,7 +90,6 @@ func (uc *AuthUseCase) Login(ctx context.Context, input dashboard.LoginRequest) 
 
 	if err := uc.sessionRepo.SaveSession(ctx, authmodel.SessionModel{
 		UserID:       admin.ID,
-		TokenType:    "JWT",
 		RefreshToken: refreshToken,
 		ExpiresAt:    refreshExpiry,
 	}); err != nil {
@@ -106,7 +105,7 @@ func (uc *AuthUseCase) Refresh(ctx context.Context, input dashboard.RefreshToken
 		return dashboard.AuthEnvelope{}, ErrInvalidRefreshToken
 	}
 
-	session, err := uc.sessionRepo.FindSessionByRefreshToken(ctx, refreshToken)
+	session, err := uc.sessionRepo.IsSessionActive(ctx, authmodel.RefreshTokenReqModel{})
 	if err != nil {
 		return dashboard.AuthEnvelope{}, ErrInvalidRefreshToken
 	}
@@ -155,7 +154,6 @@ func (uc *AuthUseCase) Refresh(ctx context.Context, input dashboard.RefreshToken
 
 	if err := uc.sessionRepo.SaveSession(ctx, authmodel.SessionModel{
 		UserID:       admin.ID,
-		TokenType:    "JWT",
 		RefreshToken: newRefreshToken,
 		ExpiresAt:    refreshExpiry,
 	}); err != nil {

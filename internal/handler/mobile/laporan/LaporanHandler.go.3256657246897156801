@@ -19,6 +19,7 @@ func NewLaporanHandler(getLaporanUc *usecase.GetLaporanUseCase) *LaporanHandler 
 	return &LaporanHandler{getLaporanUc: getLaporanUc}
 }
 
+// Endpoint: POST /api/v2/linespot/laporan
 func (h *LaporanHandler) Execute(w http.ResponseWriter, r *http.Request) {
 	userID, okUserId := middleware.UserIDFromContext(r.Context())
 	roleID, okRoleId := middleware.RoleIDFromContext(r.Context())

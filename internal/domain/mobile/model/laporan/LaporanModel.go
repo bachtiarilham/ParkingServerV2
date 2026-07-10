@@ -1,10 +1,21 @@
 package laporan
 
+import "time"
+
 type LaporanModel struct {
-	TanggalTerpilih    *string                         `json:"tanggal_terpilih,omitempty"`
-	Periode            *LaporanDateRangeModel          `json:"periode,omitempty"`
-	Summary            *LaporanSummaryModel            `json:"summary,omitempty"`
-	ChartBars          []LaporanChartBarModel          `json:"chart_bars,omitempty"`
-	PaymentSummaries   []LaporanPaymentSummaryModel    `json:"payment_summaries,omitempty"`
-	RecentTransactions []LaporanRecentTransactionModel `json:"recent_transactions,omitempty"`
+	TanggalAwal          time.Time
+	TanggalAkhir         time.Time
+	TotalTransaksi       int64
+	TotalPendapatanJukir int64
+	PendapatanPerTanggal *[]LaporanItem
+}
+
+type LaporanItem struct {
+	Tanggal              time.Time
+	TotalTransaksi       int64
+	TotalPendapatanJukir int64
+	MotorCount           int64
+	CarCount             int64
+	QrisCount            int64
+	CashCount            int64
 }

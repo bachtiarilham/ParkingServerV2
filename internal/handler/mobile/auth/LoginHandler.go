@@ -11,6 +11,7 @@ import (
 	dto "modulegue/internal/data/mobile/remote/dto/auth"
 	mapper "modulegue/internal/data/mobile/remote/mapper/auth"
 	usecase "modulegue/internal/domain/mobile/usecase/auth"
+	"modulegue/internal/middleware"
 )
 
 type LoginHandler struct {
@@ -40,6 +41,8 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusBadRequest, "request tidak valid")
 		return
 	}
+	requestModel.DeviceName = middleware.UserAgent(r)
+	requestModel.DeviceId = middleware.ClientIP(r)
 
 	token, _, err := h.loginUc.Execute(r.Context(), *requestModel)
 	if err != nil {

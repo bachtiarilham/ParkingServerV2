@@ -89,21 +89,30 @@ func (uc *LoginUseCase) Execute(ctx context.Context, reqModel model.LoginRequest
 	// 5. Simpan session ke DB
 	if err := uc.sessionRepo.SaveSession(ctx, model.SessionModel{
 		UserID:       hasilLogin.UserId,
-		TokenType:    "JWT",
 		RefreshToken: refreshToken,
+		DeviceId:     reqModel.DeviceId,
+		DeviceName:   reqModel.DeviceName,
+		FcmToken:     reqModel.FcmToken,
+		IpAddress:    reqModel.IpAdrress,
+		UserAgent:    reqModel.UserAgent,
 		ExpiresAt:    refreshExp,
 	}); err != nil {
 		return nil, nil, fmt.Errorf("save session: %w", err)
 	}
 
+	// 6. simpan last login
+	if err := uc.sessionRepo.SaveLastLogin(ctx, hasilLogin.UserId); err != nil {
+		return nil, nil, fmt.Errorf("save last login: %w", err)
+	}
+
 	return &model.TokenSetModel{
 			AccessToken:      accessToken,
 			RefreshToken:     refreshToken,
-			TokenType:        "Bearer",
 			ExpiresInSeconds: accessExp.Unix(),
 		}, &model.LoginRespModel{
 			UserId:       hasilLogin.UserId,
 			RoleId:       hasilLogin.RoleId,
 			PasswordHash: hasilLogin.PasswordHash,
 		}, nil
+
 }

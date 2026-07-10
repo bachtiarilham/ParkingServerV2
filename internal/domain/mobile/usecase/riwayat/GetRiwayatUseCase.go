@@ -6,7 +6,6 @@ import (
 
 	model "modulegue/internal/domain/mobile/model/riwayat"
 	"modulegue/internal/domain/mobile/repository"
-	"modulegue/internal/middleware"
 )
 
 type GetRiwayatUseCase struct {
@@ -22,23 +21,6 @@ func NewGetRiwayatUseCase(
 }
 
 func (uc *GetRiwayatUseCase) Execute(ctx context.Context, reqModel model.RiwayatRequestModel) (*model.RiwayatModel, error) {
-	userID, ok := middleware.UserIDFromContext(ctx)
-	if !ok && reqModel.UserID == 0 {
-		return nil, fmt.Errorf("user not authenticated")
-	}
-
-	roleID, ok := middleware.RoleIDFromContext(ctx)
-	if !ok && reqModel.RoleID == 0 {
-		return nil, fmt.Errorf("role not found in context")
-	}
-
-	if reqModel.UserID == 0 {
-		reqModel.UserID = userID
-	}
-	if reqModel.RoleID == 0 {
-		reqModel.RoleID = roleID
-	}
-
 	result, err := uc.riwayatRepo.GetRiwayat(ctx, reqModel)
 	if err != nil {
 		return nil, fmt.Errorf("get riwayat: %w", err)

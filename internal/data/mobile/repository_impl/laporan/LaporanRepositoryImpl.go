@@ -4,8 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
-	"time"
 
 	model "modulegue/internal/domain/mobile/model/laporan"
 	"modulegue/internal/domain/mobile/repository"
@@ -20,285 +18,111 @@ func NewLaporanRepositoryImpl(db *sql.DB) repository.LaporanRepository {
 }
 
 func (r *LaporanRepositoryImpl) GetLaporan(ctx context.Context, filter model.LaporanRequestModel) (*model.LaporanModel, error) {
-	startDate := strings.TrimSpace(filter.StartDate)
-	endDate := strings.TrimSpace(filter.EndDate)
-	lokasi := strings.TrimSpace(filter.Lokasi)
-
-	if startDate == "" {
-		startDate = currentDateString()
-	}
-	if endDate == "" {
-		endDate = startDate
-	}
-
-	summary, err := r.getSummary(ctx, filter.UserID, filter.RoleID, startDate, endDate, lokasi)
-	if err != nil {
-		return nil, err
-	}
-
-	chartBars, err := r.getChartBars(ctx, filter.UserID, filter.RoleID, startDate, endDate, lokasi)
-	if err != nil {
-		return nil, err
-	}
-
-	paymentSummaries, err := r.getPaymentSummaries(ctx, filter.UserID, filter.RoleID, startDate, endDate, lokasi)
-	if err != nil {
-		return nil, err
-	}
-
-	recentTransactions, err := r.getRecentTransactions(ctx, filter.UserID, filter.RoleID, startDate, endDate, lokasi)
-	if err != nil {
-		return nil, err
-	}
-
-	tanggalTerpilih := endDate
-	label := fmt.Sprintf("%s s/d %s", startDate, endDate)
-
-	return &model.LaporanModel{
-		TanggalTerpilih: &tanggalTerpilih,
-		Periode: &model.LaporanDateRangeModel{
-			StartDate: &startDate,
-			EndDate:   &endDate,
-			Label:     &label,
-		},
-		Summary:            summary,
-		ChartBars:          chartBars,
-		PaymentSummaries:   paymentSummaries,
-		RecentTransactions: recentTransactions,
-	}, nil
-}
-
-func (r *LaporanRepositoryImpl) getSummary(ctx context.Context, userID, roleID int64, startDate, endDate, lokasi string) (*model.LaporanSummaryModel, error) {
 	query := `
 		SELECT
-			COUNT(*) AS total_transaksi,
-			COALESCE(SUM(fpt.final_amount), 0) AS total_pendapatan
-		FROM financial_parking_transaction fpt
-		LEFT JOIN parking_location pl ON pl.id = fpt.location_id
-		WHERE DATE(fpt.occurred_at) BETWEEN ? AND ?
-		  AND (? = '' OR pl.location_name = ?)
-		  AND (? = 0 OR fpt.customer_user_id = ? OR fpt.jukir_user_id = ? OR fpt.officer_user_id = ?)
-		  AND fpt.transaction_status <> 'void'
+			DATE(?) AS tanggalAwal,
+			DATE(?) AS tanggalAkhir,
+
+			COALESCE(SUM(total_transaction), 0) AS totalTransaksi,
+			COALESCE(SUM(total_income), 0) AS totalPendapatan,
+			COALESCE(SUM(total_jukir_share), 0) AS totalPendapatanJukir,
+
+			COALESCE(SUM(motor_count), 0) AS totalMotor,
+			COALESCE(SUM(car_count), 0) AS totalMobil,
+			COALESCE(SUM(qris_count), 0) AS totalQris,
+			COALESCE(SUM(cash_count), 0) AS totalCash
+
+		FROM summary_officer_daily_report
+		WHERE officer_user_id = ?
+		AND report_date >= DATE(?)
+		AND report_date <= DATE(?);
 	`
 
-	var totalTransaksi int
-	var totalPendapatan int64
-	err := r.db.QueryRowContext(
-		ctx,
-		query,
-		startDate, endDate,
-		lokasi, lokasi,
-		userID, userID, userID, userID,
-	).Scan(&totalTransaksi, &totalPendapatan)
-	if err != nil {
-		return nil, fmt.Errorf("get laporan summary: %w", err)
-	}
-
-	var rataRata int64
-	if totalTransaksi > 0 {
-		rataRata = totalPendapatan / int64(totalTransaksi)
-	}
-
-	return &model.LaporanSummaryModel{
-		TotalTransaksi:    &totalTransaksi,
-		TotalPendapatan:   &totalPendapatan,
-		RataRataTransaksi: &rataRata,
-	}, nil
-}
-
-func (r *LaporanRepositoryImpl) getChartBars(ctx context.Context, userID, roleID int64, startDate, endDate, lokasi string) ([]model.LaporanChartBarModel, error) {
-	query := `
-		SELECT
-			DATE_FORMAT(fpt.occurred_at, '%Y-%m-%d') AS tanggal,
-			COALESCE(SUM(fpt.final_amount), 0) AS amount
-		FROM financial_parking_transaction fpt
-		LEFT JOIN parking_location pl ON pl.id = fpt.location_id
-		WHERE DATE(fpt.occurred_at) BETWEEN ? AND ?
-		  AND (? = '' OR pl.location_name = ?)
-		  AND (? = 0 OR fpt.customer_user_id = ? OR fpt.jukir_user_id = ? OR fpt.officer_user_id = ?)
-		  AND fpt.transaction_status <> 'void'
-		GROUP BY DATE(fpt.occurred_at)
-		ORDER BY DATE(fpt.occurred_at) ASC
-	`
-
-	rows, err := r.db.QueryContext(
-		ctx,
-		query,
-		startDate, endDate,
-		lokasi, lokasi,
-		userID, userID, userID, userID,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("get laporan chart bars: %w", err)
-	}
-	defer rows.Close()
-
-	result := []model.LaporanChartBarModel{}
-	var maxAmount int64
-	type rawRow struct {
-		tanggal string
-		amount  int64
-	}
-	rawRows := []rawRow{}
-
-	for rows.Next() {
-		var item rawRow
-		if err := rows.Scan(&item.tanggal, &item.amount); err != nil {
-			return nil, fmt.Errorf("scan laporan chart bar: %w", err)
-		}
-		if item.amount > maxAmount {
-			maxAmount = item.amount
-		}
-		rawRows = append(rawRows, item)
-	}
-
-	for _, item := range rawRows {
-		tanggal := item.tanggal
-		amount := item.amount
-		value := 0.0
-		if maxAmount > 0 {
-			value = float64(amount) / float64(maxAmount)
-		}
-		periodLabel := tanggal
-		periodStartDate := startDate
-		periodEndDate := endDate
-
-		result = append(result, model.LaporanChartBarModel{
-			Tanggal:         &tanggal,
-			Amount:          &amount,
-			Value:           &value,
-			PeriodLabel:     &periodLabel,
-			PeriodStartDate: &periodStartDate,
-			PeriodEndDate:   &periodEndDate,
-		})
-	}
-
-	return result, nil
-}
-
-func (r *LaporanRepositoryImpl) getPaymentSummaries(ctx context.Context, userID, roleID int64, startDate, endDate, lokasi string) ([]model.LaporanPaymentSummaryModel, error) {
-	totalAmountQuery := `
-		SELECT COALESCE(SUM(fpt.final_amount), 0)
-		FROM financial_parking_transaction fpt
-		LEFT JOIN parking_location pl ON pl.id = fpt.location_id
-		WHERE DATE(fpt.occurred_at) BETWEEN ? AND ?
-		  AND (? = '' OR pl.location_name = ?)
-		  AND (? = 0 OR fpt.customer_user_id = ? OR fpt.jukir_user_id = ? OR fpt.officer_user_id = ?)
-		  AND fpt.transaction_status <> 'void'
-	`
-
-	var totalAmount int64
+	var result model.LaporanModel
 	if err := r.db.QueryRowContext(
 		ctx,
-		totalAmountQuery,
-		startDate, endDate,
-		lokasi, lokasi,
-		userID, userID, userID, userID,
-	).Scan(&totalAmount); err != nil {
-		return nil, fmt.Errorf("get laporan payment total: %w", err)
+		query,
+		filter.StartDate, filter.EndDate, filter.UserID,
+		filter.StartDate, filter.EndDate,
+	).Scan(
+		&result.TanggalAwal,
+		&result.TanggalAkhir,
+		&result.TotalTransaksi,
+		&result.TotalPendapatanJukir,
+		new(int64),
+		new(int64),
+		new(int64),
+		new(int64),
+		new(int64),
+	); err != nil {
+		return nil, fmt.Errorf("get laporan: %w", err)
 	}
 
+	items, err := r.GetItem(ctx, filter)
+	if err != nil {
+		return nil, fmt.Errorf("get item: %w", err)
+	}
+	result.PendapatanPerTanggal = items
+
+	return &result, nil
+}
+
+func (r *LaporanRepositoryImpl) GetItem(ctx context.Context, filter model.LaporanRequestModel) (*[]model.LaporanItem, error) {
 	query := `
+		WITH RECURSIVE date_range AS (
+			SELECT DATE(?) AS report_date
+
+			UNION ALL
+
+			SELECT DATE_ADD(report_date, INTERVAL 1 DAY)
+			FROM date_range
+			WHERE report_date < DATE(?)
+		)
+
 		SELECT
-			COALESCE(pm.payment_method_name, COALESCE(fpt.payment_method, 'LAINNYA')) AS label,
-			COALESCE(SUM(fpt.final_amount), 0) AS amount
-		FROM financial_parking_transaction fpt
-		LEFT JOIN payment_method pm ON pm.id = fpt.payment_method_id
-		LEFT JOIN parking_location pl ON pl.id = fpt.location_id
-		WHERE DATE(fpt.occurred_at) BETWEEN ? AND ?
-		  AND (? = '' OR pl.location_name = ?)
-		  AND (? = 0 OR fpt.customer_user_id = ? OR fpt.jukir_user_id = ? OR fpt.officer_user_id = ?)
-		  AND fpt.transaction_status <> 'void'
-		GROUP BY COALESCE(pm.payment_method_name, COALESCE(fpt.payment_method, 'LAINNYA'))
-		ORDER BY amount DESC
+			dr.report_date AS tanggal,
+
+			COALESCE(sodr.total_transaction, 0) AS totalTransaksi,
+			COALESCE(sodr.total_income, 0) AS totalPendapatan,
+			COALESCE(sodr.total_jukir_share, 0) AS totalPendapatanJukir,
+
+			COALESCE(sodr.motor_count, 0) AS motorCount,
+			COALESCE(sodr.car_count, 0) AS carCount,
+			COALESCE(sodr.qris_count, 0) AS qrisCount,
+			COALESCE(sodr.cash_count, 0) AS cashCount
+
+		FROM date_range dr
+
+		LEFT JOIN summary_officer_daily_report sodr
+			ON sodr.report_date = dr.report_date
+		AND sodr.officer_user_id = ?
+
+		ORDER BY dr.report_date ASC;
 	`
 
-	rows, err := r.db.QueryContext(
-		ctx,
-		query,
-		startDate, endDate,
-		lokasi, lokasi,
-		userID, userID, userID, userID,
-	)
+	rows, err := r.db.QueryContext(ctx, query, filter.StartDate, filter.EndDate, filter.UserID)
 	if err != nil {
-		return nil, fmt.Errorf("get laporan payment summaries: %w", err)
+		return nil, fmt.Errorf("get laporan item: %w", err)
 	}
 	defer rows.Close()
 
-	result := []model.LaporanPaymentSummaryModel{}
+	items := make([]model.LaporanItem, 0)
 	for rows.Next() {
-		var label string
-		var amount int64
-		if err := rows.Scan(&label, &amount); err != nil {
-			return nil, fmt.Errorf("scan laporan payment summary: %w", err)
+		var item model.LaporanItem
+		if err := rows.Scan(
+			&item.Tanggal,
+			&item.TotalTransaksi,
+			new(int64),
+			&item.TotalPendapatanJukir,
+			&item.MotorCount,
+			&item.CarCount,
+			&item.QrisCount,
+			&item.CashCount,
+		); err != nil {
+			return nil, fmt.Errorf("scan laporan item: %w", err)
 		}
-
-		percentage := 0
-		if totalAmount > 0 {
-			percentage = int((amount * 100) / totalAmount)
-		}
-
-		result = append(result, model.LaporanPaymentSummaryModel{
-			Label:      &label,
-			Amount:     &amount,
-			Percentage: &percentage,
-		})
+		items = append(items, item)
 	}
 
-	return result, nil
-}
-
-func (r *LaporanRepositoryImpl) getRecentTransactions(ctx context.Context, userID, roleID int64, startDate, endDate, lokasi string) ([]model.LaporanRecentTransactionModel, error) {
-	query := `
-		SELECT
-			fpt.transaction_code,
-			DATE_FORMAT(COALESCE(fpt.paid_at, fpt.occurred_at), '%Y-%m-%d %H:%i:%s') AS waktu,
-			fpt.final_amount,
-			COALESCE(pm.payment_method_name, COALESCE(fpt.payment_method, 'LAINNYA')) AS payment_tag
-		FROM financial_parking_transaction fpt
-		LEFT JOIN payment_method pm ON pm.id = fpt.payment_method_id
-		LEFT JOIN parking_location pl ON pl.id = fpt.location_id
-		WHERE DATE(fpt.occurred_at) BETWEEN ? AND ?
-		  AND (? = '' OR pl.location_name = ?)
-		  AND (? = 0 OR fpt.customer_user_id = ? OR fpt.jukir_user_id = ? OR fpt.officer_user_id = ?)
-		  AND fpt.transaction_status <> 'void'
-		ORDER BY COALESCE(fpt.paid_at, fpt.occurred_at) DESC
-		LIMIT 10
-	`
-
-	rows, err := r.db.QueryContext(
-		ctx,
-		query,
-		startDate, endDate,
-		lokasi, lokasi,
-		userID, userID, userID, userID,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("get laporan recent transactions: %w", err)
-	}
-	defer rows.Close()
-
-	result := []model.LaporanRecentTransactionModel{}
-	for rows.Next() {
-		var code string
-		var timeText string
-		var total int64
-		var paymentTag string
-		if err := rows.Scan(&code, &timeText, &total, &paymentTag); err != nil {
-			return nil, fmt.Errorf("scan laporan recent transaction: %w", err)
-		}
-
-		result = append(result, model.LaporanRecentTransactionModel{
-			Code:       &code,
-			Time:       &timeText,
-			Total:      &total,
-			PaymentTag: &paymentTag,
-		})
-	}
-
-	return result, nil
-}
-
-func currentDateString() string {
-	return time.Now().Format("2006-01-02")
+	return &items, nil
 }

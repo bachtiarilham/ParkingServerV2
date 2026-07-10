@@ -27,7 +27,7 @@ func (r *HomeRepositoryImpl) GetJukirHome(ctx context.Context, reqModel model.Ge
 		return nil, err
 	}
 
-	events, news, err := r.getRecentEventsAndNews(ctx, 10, 0)
+	events, news, err := r.getContents(ctx, 10, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func (r *HomeRepositoryImpl) GetCustomerHome(ctx context.Context, reqModel model
 		return nil, err
 	}
 
-	events, news, err := r.getRecentEventsAndNews(ctx, 10, 0)
+	events, news, err := r.getContents(ctx, 10, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -213,11 +213,14 @@ func (r *HomeRepositoryImpl) getJukirProfile(ctx context.Context, userID int64) 
 	query := `
 		SELECT
 			ui.id AS user_id,
+			ui.nik,
 			ui.full_name,
 			ui.username,
 			ui.email,
 			ui.phone_number,
 			ui.photo_url,
+			ui.is_verified,
+			ui.role_id,
 
 			mr.role_code,
 			mr.role_name,
@@ -290,11 +293,14 @@ func (r *HomeRepositoryImpl) getJukirProfile(ctx context.Context, userID int64) 
 	var (
 		profile                 profileModel.JukirModel
 		userIDCol               sql.NullInt64
+		nik                     sql.NullString
 		fullName                sql.NullString
 		username                sql.NullString
 		email                   sql.NullString
 		phone                   sql.NullString
 		photoURL                sql.NullString
+		isVerified              sql.NullBool
+		roleID                  sql.NullInt64
 		roleCode                sql.NullString
 		roleName                sql.NullString
 		saldo                   sql.NullInt64
@@ -319,11 +325,14 @@ func (r *HomeRepositoryImpl) getJukirProfile(ctx context.Context, userID int64) 
 
 	err := r.db.QueryRowContext(ctx, query, userID).Scan(
 		&userIDCol,
+		&nik,
 		&fullName,
 		&username,
 		&email,
 		&phone,
 		&photoURL,
+		&isVerified,
+		&roleID,
 		&roleCode,
 		&roleName,
 		&saldo,
@@ -352,30 +361,87 @@ func (r *HomeRepositoryImpl) getJukirProfile(ctx context.Context, userID int64) 
 		return nil, fmt.Errorf("get jukir profile: %w", err)
 	}
 
-	profile.UserId = userIDCol.Int64
-	profile.FullName = fullName.String
-	profile.Username = username.String
-	profile.Email = email.String
-	profile.Phone = phone.String
-	profile.PhotoUrl = photoURL.String
-	profile.RoleCode = roleCode.String
-	profile.RoleName = roleName.String
-	profile.Saldo = saldo.Int64
-	profile.LocationId = locationID.Int64
-	profile.LocationCode = locationCode.String
-	profile.LocationName = locationName.String
-	profile.Address = address.String
-	profile.CenterLatitude = centerLatitude.Float64
-	profile.CenterLongitude = centerLongitude.Float64
-	profile.RadiusMeter = radiusMeter.Int64
-	profile.AreaId = areaID.Int64
-	profile.AreaName = areaName.String
-	profile.ZoneId = zoneID.Int64
-	profile.ZoneName = zoneName.String
-	profile.TodayIncome = todayIncome.Int64
-	profile.TotalIncome = totalIncome.Int64
-	profile.TodayTransactionCount = todayTransactionCount.Int64
-	profile.UnreadNotificationCount = unreadNotificationCount.Int64
+	if userIDCol.Valid {
+		profile.UserId = userIDCol.Int64
+	}
+	if nik.Valid {
+		profile.Nik = nik.String
+	}
+	if fullName.Valid {
+		profile.FullName = fullName.String
+	}
+	if username.Valid {
+		profile.Username = username.String
+	}
+	if email.Valid {
+		profile.Email = email.String
+	}
+	if phone.Valid {
+		profile.Phone = phone.String
+	}
+	if photoURL.Valid {
+		profile.PhotoUrl = photoURL.String
+	}
+	if isVerified.Valid {
+		profile.IsVerified = isVerified.Bool
+	}
+	if roleID.Valid {
+		profile.RoleId = roleID.Int64
+	}
+	if roleCode.Valid {
+		profile.RoleCode = roleCode.String
+	}
+	if roleName.Valid {
+		profile.RoleName = roleName.String
+	}
+	if saldo.Valid {
+		profile.Saldo = saldo.Int64
+	}
+	if locationID.Valid {
+		profile.LocationId = locationID.Int64
+	}
+	if locationCode.Valid {
+		profile.LocationCode = locationCode.String
+	}
+	if locationName.Valid {
+		profile.LocationName = locationName.String
+	}
+	if address.Valid {
+		profile.Address = address.String
+	}
+	if centerLatitude.Valid {
+		profile.CenterLatitude = centerLatitude.Float64
+	}
+	if centerLongitude.Valid {
+		profile.CenterLongitude = centerLongitude.Float64
+	}
+	if radiusMeter.Valid {
+		profile.RadiusMeter = radiusMeter.Int64
+	}
+	if areaID.Valid {
+		profile.AreaId = areaID.Int64
+	}
+	if areaName.Valid {
+		profile.AreaName = areaName.String
+	}
+	if zoneID.Valid {
+		profile.ZoneId = zoneID.Int64
+	}
+	if zoneName.Valid {
+		profile.ZoneName = zoneName.String
+	}
+	if todayIncome.Valid {
+		profile.TodayIncome = todayIncome.Int64
+	}
+	if totalIncome.Valid {
+		profile.TotalIncome = totalIncome.Int64
+	}
+	if todayTransactionCount.Valid {
+		profile.TodayTransactionCount = todayTransactionCount.Int64
+	}
+	if unreadNotificationCount.Valid {
+		profile.UnreadNotificationCount = unreadNotificationCount.Int64
+	}
 	if assignmentEffectiveFrom.Valid {
 		profile.AssignmentEffectiveFrom = assignmentEffectiveFrom.Time
 	}
@@ -387,7 +453,7 @@ func (r *HomeRepositoryImpl) getJukirProfile(ctx context.Context, userID int64) 
 
 }
 
-func (r *HomeRepositoryImpl) getRecentEventsAndNews(ctx context.Context, limit, offset int) ([]model.EventsModel, []model.NewsModel, error) {
+func (r *HomeRepositoryImpl) getContents(ctx context.Context, limit, offset int) ([]model.EventsModel, []model.NewsModel, error) {
 	query := `
 		SELECT id, title, description, publish_date, image_url, content_type
 		FROM customer_news_and_events

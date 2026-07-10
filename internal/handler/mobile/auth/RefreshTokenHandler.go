@@ -55,7 +55,6 @@ func (h *RefreshTokenHandler) Execute(w http.ResponseWriter, r *http.Request) {
 		TokenSetDto: dto.TokenSetDto{
 			AccessToken:      result.AccessToken,
 			RefreshToken:     result.RefreshToken,
-			TokenType:        "Bearer",
 			ExpiresInSeconds: result.ExpiresAt,
 		},
 	}

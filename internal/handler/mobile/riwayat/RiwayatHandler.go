@@ -24,8 +24,7 @@ func NewRiwayatHandler(getRiwayatUc *usecase.GetRiwayatUseCase) *RiwayatHandler 
 // Endpoint: POST /api/v2/linespot/riwayat
 func (h *RiwayatHandler) Execute(w http.ResponseWriter, r *http.Request) {
 	userID, okUserId := middleware.UserIDFromContext(r.Context())
-	roleID, okRoleId := middleware.RoleIDFromContext(r.Context())
-	if !okUserId || !okRoleId {
+	if !okUserId {
 		response.Error(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
@@ -37,14 +36,12 @@ func (h *RiwayatHandler) Execute(w http.ResponseWriter, r *http.Request) {
 	}
 
 	input := model.RiwayatRequestModel{
-		UserID:    userID,
-		RoleID:    roleID,
-		Username:  strings.TrimSpace(req.Username),
-		StartDate: strings.TrimSpace(req.StartDate),
-		EndDate:   strings.TrimSpace(req.EndDate),
-		Payment:   strings.TrimSpace(req.Payment),
-		Vehicle:   strings.TrimSpace(req.Vehicle),
-		Lokasi:    strings.TrimSpace(req.Lokasi),
+		UserID:      userID,
+		StartDate:   strings.TrimSpace(req.StartDate),
+		EndDate:     strings.TrimSpace(req.EndDate),
+		PaymentCode: strings.TrimSpace(req.Payment),
+		VehicleCode: strings.TrimSpace(req.Vehicle),
+		LokasiCode:  strings.TrimSpace(req.Lokasi),
 	}
 
 	result, err := h.getRiwayatUc.Execute(r.Context(), input)

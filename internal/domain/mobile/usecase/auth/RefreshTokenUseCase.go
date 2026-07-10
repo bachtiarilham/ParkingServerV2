@@ -40,7 +40,7 @@ func (uc *RefreshTokenUseCase) Execute(ctx context.Context, reqModel model.Refre
 	}
 
 	// 1. Cari session berdasarkan refresh token
-	session, err := uc.sessionRepo.FindSessionByRefreshToken(ctx, reqModel.RefreshToken)
+	session, err := uc.sessionRepo.IsSessionActive(ctx, reqModel)
 	if err != nil {
 		return nil, errorstring.ErrInvalidRefreshToken
 	}
@@ -92,7 +92,6 @@ func (uc *RefreshTokenUseCase) Execute(ctx context.Context, reqModel model.Refre
 
 	newSession := model.SessionModel{
 		UserID:       session.UserID,
-		TokenType:    "JWT",
 		RefreshToken: newRefreshToken,
 		ExpiresAt:    newRefreshExp,
 		UpdatedAt:    now,

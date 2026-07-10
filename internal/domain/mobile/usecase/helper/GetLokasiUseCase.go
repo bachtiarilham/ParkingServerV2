@@ -17,6 +17,6 @@ func NewGetLokasiUseCase(getLokasiRepo repository.HelperRepository) *GetLokasiUs
 	}
 }
 
-func (uc *GetLokasiUseCase) Execute(ctx context.Context) (*model.LokasiModel, error) {
-	return uc.getLokasiRepo.GetLokasi(ctx)
+func (uc *GetLokasiUseCase) Execute(ctx context.Context, userId int64) (*model.LokasiModel, error) {
+	return uc.getLokasiRepo.GetLokasi(ctx, userId)
 }

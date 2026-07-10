@@ -1,0 +1,154 @@
+package laporan
+
+import (
+	"context"
+	"encoding/json"
+	"database/sql"
+	"fmt"
+	"strings"
+	"time"
+
+	model "modulegue/internal/domain/mobile/model/laporan"
+	"modulegue/internal/domain/mobile/repository"
+)
+
+type LaporanRepositoryImpl struct {
+	db *sql.DB
+}
+
+func NewLaporanRepositoryImpl(db *sql.DB) repository.LaporanRepository {
+	return &LaporanRepositoryImpl{db: db}
+}
+
+func (r *LaporanRepositoryImpl) GetLaporan(ctx context.Context, filter model.LaporanRequestModel) (*model.LaporanModel, error) {
+	startDate := strings.TrimSpace(filter.StartDate)
+	endDate := strings.TrimSpace(filter.EndDate)
+
+	query := `
+		WITH RECURSIVE params AS (
+			SELECT
+				DATE(?) AS start_date,
+				DATE(?) AS end_date,
+				? AS officer_user_id
+		),
+
+		date_range AS (
+			SELECT start_date AS report_date
+			FROM params
+
+			UNION ALL
+
+			SELECT DATE_ADD(report_date, INTERVAL 1 DAY)
+			FROM date_range, params
+			WHERE report_date < params.end_date
+		),
+
+		daily_result AS (
+			SELECT
+				dr.report_date,
+
+				COALESCE(sodr.total_transaction, 0) AS total_transaction,
+				COALESCE(sodr.total_income, 0) AS total_income,
+				COALESCE(sodr.total_jukir_share, 0) AS total_jukir_share,
+				COALESCE(sodr.motor_count, 0) AS motor_count,
+				COALESCE(sodr.car_count, 0) AS car_count,
+				COALESCE(sodr.qris_count, 0) AS qris_count,
+				COALESCE(sodr.cash_count, 0) AS cash_count
+
+			FROM date_range dr
+
+			LEFT JOIN summary_officer_daily_report sodr
+				ON sodr.report_date = dr.report_date
+			AND sodr.officer_user_id = (SELECT officer_user_id FROM params)
+		)
+
+		SELECT
+			p.start_date AS tanggalAwal,
+			p.end_date AS tanggalAkhir,
+
+			COALESCE(SUM(d.total_transaction), 0) AS totalTransaksi,
+			COALESCE(SUM(d.total_income), 0) AS totalPendapatan,
+			COALESCE(SUM(d.total_jukir_share), 0) AS totalPendapatanJukir,
+
+			JSON_ARRAYAGG(
+				JSON_OBJECT(
+					'tanggal', d.report_date,
+					'totalTransaksi', d.total_transaction,
+					'totalPendapatan', d.total_income,
+					'totalPendapatanJukir', d.total_jukir_share,
+					'motorCount', d.motor_count,
+					'carCount', d.car_count,
+					'qrisCount', d.qris_count,
+					'cashCount', d.cash_count
+				)
+				ORDER BY d.report_date
+			) AS pendapatanPerTanggal
+
+		FROM params p
+		JOIN daily_result d
+
+		GROUP BY
+			p.start_date,
+			p.end_date;
+	`
+
+	var result model.LaporanModel
+	var pendapatanPerTanggal sql.NullString
+	if err := r.db.QueryRowContext(
+		ctx,
+		query,
+		startDate, endDate, filter.UserID,
+		startDate, endDate,
+		filter.Lokasi, filter.Lokasi,
+		filter.UserID, filter.UserID, filter.UserID, filter.UserID,
+	).Scan(
+		&result.TanggalAwal,
+		&result.TanggalAkhir,
+		&result.TotalTransaksi,
+		&result.TotalPendapatanJukir,
+		&pendapatanPerTanggal,
+	); err != nil {
+		return nil, fmt.Errorf("get laporan: %w", err)
+	}
+
+	items := []model.LaporanItem{}
+	if pendapatanPerTanggal.Valid && pendapatanPerTanggal.String != "" {
+		var rawItems []struct {
+			Tanggal              string `json:"tanggal"`
+			TotalTransaksi       int64  `json:"totalTransaksi"`
+			TotalPendapatanJukir int64  `json:"totalPendapatanJukir"`
+			MotorCount           int64  `json:"motorCount"`
+			CarCount             int64  `json:"carCount"`
+			QrisCount            int64  `json:"qrisCount"`
+			CashCount            int64  `json:"cashCount"`
+		}
+
+		if err := json.Unmarshal([]byte(pendapatanPerTanggal.String), &rawItems); err != nil {
+			return nil, fmt.Errorf("unmarshal laporan pendapatan per tanggal: %w", err)
+		}
+
+		for _, item := range rawItems {
+			var tanggal time.Time
+			if item.Tanggal != "" {
+				parsedTanggal, err := time.Parse("2006-01-02", item.Tanggal)
+				if err != nil {
+					return nil, fmt.Errorf("parse laporan tanggal: %w", err)
+				}
+				tanggal = parsedTanggal
+			}
+
+			items = append(items, model.LaporanItem{
+				Tanggal:              tanggal,
+				TotalTransaksi:       item.TotalTransaksi,
+				TotalPendapatanJukir: item.TotalPendapatanJukir,
+				MotorCount:           item.MotorCount,
+				CarCount:             item.CarCount,
+				QrisCount:            item.QrisCount,
+				CashCount:            item.CashCount,
+			})
+		}
+	}
+	result.PendapatanPerTanggal = &items
+
+	return &result, nil
+}

@@ -6,6 +6,7 @@ import (
 	"modulegue/core/response"
 	mapper "modulegue/internal/data/mobile/remote/mapper/helper"
 	usecase "modulegue/internal/domain/mobile/usecase/helper"
+	middleware "modulegue/internal/middleware"
 )
 
 type GetLocationHandler struct {
@@ -21,7 +22,13 @@ func NewGetLocationHandler(
 }
 
 func (h *GetLocationHandler) Execute(w http.ResponseWriter, r *http.Request) {
-	result, err := h.getLocationUc.Execute(r.Context())
+	userId, okUserId := middleware.UserIDFromContext(r.Context())
+	if !okUserId {
+		response.Error(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	result, err := h.getLocationUc.Execute(r.Context(), userId)
 	if err != nil {
 		response.Error(w, http.StatusInternalServerError, "gagal memuat lokasi")
 		return

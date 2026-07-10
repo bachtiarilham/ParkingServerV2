@@ -17,34 +17,79 @@ func NewHelperRepositoryImpl(db *sql.DB) repository.HelperRepository {
 	return &HelperRepositoryImpl{db: db}
 }
 
-func (r *HelperRepositoryImpl) GetLokasi(ctx context.Context) (*model.LokasiModel, error) {
+func (r *HelperRepositoryImpl) GetLokasi(ctx context.Context, userId int64) (*model.LokasiModel, error) {
 	rows, err := r.db.QueryContext(
 		ctx,
 		`
-		SELECT location_name
-		FROM parking_location
-		WHERE is_active = 1
-		ORDER BY location_name ASC
+		SELECT
+			lz.id AS zoneId,
+			lz.zone_name AS zoneName,
+
+			lp.id AS locationId,
+			lp.location_name AS locationName,
+			lp.address AS address,
+
+			la.id AS areaId,
+			la.area_name AS areaName,
+
+			CASE
+				WHEN la.id = aoc.area_id THEN 1
+				ELSE 0
+			END AS isCurrentArea
+
+		FROM assignment_officer_current aoc
+
+		JOIN location_parking lp
+			ON lp.id = aoc.location_id
+		AND lp.is_active = 1
+
+		JOIN location_zone lz
+			ON lz.id = lp.zone_id
+		AND lz.is_active = 1
+
+		JOIN location_area la
+			ON la.location_id = lp.id
+		AND la.is_active = 1
+
+		WHERE aoc.officer_user_id = ?
+
+		ORDER BY
+			isCurrentArea DESC,
+			la.area_name ASC;
 		`,
+		userId,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("get lokasi: %w", err)
 	}
 	defer rows.Close()
 
-	result := &model.LokasiModel{
-		Lokasi: []string{},
-	}
+	items := make([]model.LokasiItem, 0)
 
 	for rows.Next() {
-		var lokasi string
-		if err := rows.Scan(&lokasi); err != nil {
+		var item model.LokasiItem
+		if err := rows.Scan(
+			&item.ZonaId,
+			&item.NamaZona,
+			&item.LokasiId,
+			&item.NamaLokasi,
+			&item.Address,
+			&item.AreaId,
+			&item.NamaArea,
+			&item.IsCurrentArea,
+		); err != nil {
 			return nil, fmt.Errorf("scan lokasi: %w", err)
 		}
-		result.Lokasi = append(result.Lokasi, lokasi)
+		items = append(items, item)
 	}
 
-	return result, nil
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate lokasi: %w", err)
+	}
+
+	return &model.LokasiModel{
+		LokasiItem: &items,
+	}, nil
 }
 
 func (r *HelperRepositoryImpl) GetTarif(ctx context.Context, userId int64) (*model.TarifModel, error) {

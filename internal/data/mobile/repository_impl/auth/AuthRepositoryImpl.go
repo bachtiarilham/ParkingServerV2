@@ -85,6 +85,24 @@ func (r *AuthRepositoryImpl) LogoutUser(ctx context.Context, reqModel model.Logo
 	if reqModel.RefreshToken == "" {
 		return nil
 	}
+
+	_, err := r.db.ExecContext(
+		ctx,
+		`
+		UPDATE user_session
+		SET
+			revoked_at = NOW(),
+			updated_at = NOW()
+		WHERE user_id = ?
+		AND refresh_token = ?
+		AND revoked_at IS NULL;
+		`,
+		reqModel.UserId,
+		reqModel.RefreshToken,
+	)
+	if err != nil {
+		return fmt.Errorf("update password_hash: %w", err)
+	}
 	return nil
 }
 
@@ -320,12 +338,20 @@ func (r *AuthRepositoryImpl) ExistsByIdentity(ctx context.Context, nik, email, u
 func (r *AuthRepositoryImpl) ChangePasswordUser(ctx context.Context, userID int64, newPasswordHash string) error {
 	_, err := r.db.ExecContext(
 		ctx,
-		`UPDATE system_user SET password_hash = ?, updated_at = NOW() WHERE id = ?`,
+		`
+		UPDATE user_auth
+		SET
+			password_hash = ?,
+			failed_login_count = 0,
+			locked_until = NULL,
+			updated_at = NOW()
+		WHERE user_id = ?;
+		`,
 		newPasswordHash,
 		userID,
 	)
 	if err != nil {
-		return fmt.Errorf("update password_hash: %w", err)
+		return fmt.Errorf("change password: %w", err)
 	}
 	return nil
 }
