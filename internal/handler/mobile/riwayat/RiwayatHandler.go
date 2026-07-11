@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"modulegue/core/response"
+	"modulegue/core/utils"
 	dto "modulegue/internal/data/mobile/remote/dto/riwayat"
 	mapper "modulegue/internal/data/mobile/remote/mapper/riwayat"
 	model "modulegue/internal/domain/mobile/model/riwayat"
@@ -35,13 +36,25 @@ func (h *RiwayatHandler) Execute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	startDate, err := utils.ParseISODate(req.StartDate)
+	if err != nil {
+		response.Error(w, http.StatusBadRequest, "startDate tidak valid")
+		return
+	}
+
+	endDate, err := utils.ParseISODate(req.EndDate)
+	if err != nil {
+		response.Error(w, http.StatusBadRequest, "endDate tidak valid")
+		return
+	}
+
 	input := model.RiwayatRequestModel{
 		UserID:      userID,
-		StartDate:   strings.TrimSpace(req.StartDate),
-		EndDate:     strings.TrimSpace(req.EndDate),
-		PaymentCode: strings.TrimSpace(req.Payment),
-		VehicleCode: strings.TrimSpace(req.Vehicle),
-		LokasiCode:  strings.TrimSpace(req.Lokasi),
+		StartDate:   startDate,
+		EndDate:     endDate,
+		PaymentCode: strings.TrimSpace(req.PaymentCode),
+		VehicleCode: strings.TrimSpace(req.VehicleCode),
+		LokasiCode:  strings.TrimSpace(req.LokasiCode),
 	}
 
 	result, err := h.getRiwayatUc.Execute(r.Context(), input)

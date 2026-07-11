@@ -5,8 +5,7 @@ import (
 )
 
 type CustomerHomeModel struct {
-	Profile  *model.CustomerModel `json:"profile"`
-	Events   []EventsModel        `json:"events"`
-	News     []NewsModel          `json:"news"`
-	Warnings *WarningsModel       `json:"warnings"`
+	Profile          *model.CustomerModel `json:"profile"`
+	Contents         *[]ContentsModel     `json:"contents"`
+	UnreadNotifCount int64                `json:"warnings"`
 }

@@ -4,8 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
-	"time"
 
 	model "modulegue/internal/domain/mobile/model/riwayat"
 	"modulegue/internal/domain/mobile/repository"
@@ -20,17 +18,6 @@ func NewRiwayatRepositoryImpl(db *sql.DB) repository.RiwayatRepository {
 }
 
 func (r *RiwayatRepositoryImpl) GetRiwayat(ctx context.Context, req model.RiwayatRequestModel) (*model.RiwayatModel, error) {
-	startDate := strings.TrimSpace(req.StartDate)
-	endDate := strings.TrimSpace(req.EndDate)
-	statusFilter := ""
-
-	if startDate == "" {
-		startDate = time.Now().Format("2006-01-02")
-	}
-	if endDate == "" {
-		endDate = startDate
-	}
-
 	query := `
 		SELECT
 			DATE(fpt.paid_at) AS tanggal,
@@ -128,63 +115,68 @@ func (r *RiwayatRepositoryImpl) GetRiwayat(ctx context.Context, req model.Riwaya
 		ctx,
 		query,
 		req.UserID, req.UserID, req.UserID,
-		startDate, endDate,
+		req.StartDate, req.EndDate,
 		req.PaymentCode, req.PaymentCode,
 		req.VehicleCode, req.VehicleCode,
 		req.LokasiCode, req.LokasiCode,
-		statusFilter, statusFilter,
-		req.PaymentCode, req.PaymentCode,
-		req.UserID, req.UserID, req.UserID, req.UserID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("get riwayat: %w", err)
 	}
 	defer rows.Close()
 
-	sections := []model.RiwayatSectionModel{}
+	sections := make([]model.RiwayatSectionModel, 0)
 	sectionIndexByDate := map[string]int{}
 
 	for rows.Next() {
-		var (
-			sectionDate string
-			code        string
-			plateNumber string
-			vehicleType string
-			itemTime    string
-			amount      int64
-			isEntryInt  int
-		)
-
-		if err := rows.Scan(&sectionDate, &code, &plateNumber, &vehicleType, &itemTime, &amount, &isEntryInt); err != nil {
+		var row riwayatRow
+		if err := rows.Scan(
+			&row.SectionDate,
+			&row.TransactionID,
+			&row.TransactionCode,
+			&row.SessionID,
+			&row.PlateNumber,
+			&row.VehicleTypeID,
+			&row.VehicleTypeCode,
+			&row.VehicleTypeName,
+			&row.PaymentMethodID,
+			&row.PaymentMethodCode,
+			&row.PaymentMethodName,
+			&row.LocationID,
+			&row.LocationName,
+			&row.LocationAddress,
+			&row.AreaID,
+			&row.AreaName,
+			&row.ZoneID,
+			&row.ZoneName,
+			&row.BaseAmount,
+			&row.DiscountAmount,
+			&row.FinalAmount,
+			&row.CompanyShare,
+			&row.JukirShare,
+			&row.TaxAmount,
+			&row.FeeAmount,
+			&row.TransactionStatus,
+			&row.OperationType,
+			&row.OccurredAt,
+			&row.PaidAt,
+			&row.CreatedAt,
+		); err != nil {
 			return nil, fmt.Errorf("scan riwayat item: %w", err)
 		}
 
-		idx, exists := sectionIndexByDate[sectionDate]
+		dateKey := mapRiwayatSectionDate(row)
+		idx, exists := sectionIndexByDate[dateKey]
 		if !exists {
-			dateCopy := sectionDate
 			sections = append(sections, model.RiwayatSectionModel{
-				Date:  &dateCopy,
+				Date:  dateKey,
 				Items: []model.RiwayatItemModel{},
 			})
 			idx = len(sections) - 1
-			sectionIndexByDate[sectionDate] = idx
+			sectionIndexByDate[dateKey] = idx
 		}
 
-		codeCopy := code
-		plateCopy := plateNumber
-		vehicleCopy := vehicleType
-		timeCopy := itemTime
-		amountCopy := amount
-		isEntry := isEntryInt == 1
-
-		sections[idx].Items = append(sections[idx].Items, model.RiwayatItemModel{
-			Code:        &codeCopy,
-			PlateNumber: &plateCopy,
-			VehicleType: &vehicleCopy,
-			Time:        &timeCopy,
-			Amount:      &amountCopy,
-			IsEntry:     &isEntry,
-		})
+		sections[idx].Items = append(sections[idx].Items, mapRiwayatRowToItem(row))
 	}
 
 	if err := rows.Err(); err != nil {

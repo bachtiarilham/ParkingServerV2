@@ -27,23 +27,16 @@ func (uc *GetHomeUseCase) ExecuteCustomerHome(ctx context.Context, reqModel mode
 	}
 	if result == nil {
 		return &model.CustomerHomeModel{
-			Profile:  &profileModel.CustomerModel{},
-			Events:   []model.EventsModel{},
-			News:     []model.NewsModel{},
-			Warnings: &model.WarningsModel{},
+			Profile:          &profileModel.CustomerModel{},
+			Contents:         &[]model.ContentsModel{},
+			UnreadNotifCount: 0,
 		}, nil
 	}
 	if result.Profile == nil {
 		result.Profile = &profileModel.CustomerModel{}
 	}
-	if result.Events == nil {
-		result.Events = []model.EventsModel{}
-	}
-	if result.News == nil {
-		result.News = []model.NewsModel{}
-	}
-	if result.Warnings == nil {
-		result.Warnings = &model.WarningsModel{}
+	if result.Contents == nil {
+		result.Contents = &[]model.ContentsModel{}
 	}
 	return result, nil
 }
@@ -55,23 +48,16 @@ func (uc *GetHomeUseCase) ExecuteJukirHome(ctx context.Context, reqModel model.G
 	}
 	if result == nil {
 		return &model.JukirHomeModel{
-			Profile:  &profileModel.JukirModel{},
-			Events:   []model.EventsModel{},
-			News:     []model.NewsModel{},
-			Warnings: &model.WarningsModel{},
+			Profile:          &profileModel.JukirModel{},
+			Contents:         &[]model.ContentsModel{},
+			UnreadNotifCount: 0,
 		}, nil
 	}
 	if result.Profile == nil {
 		result.Profile = &profileModel.JukirModel{}
 	}
-	if result.Events == nil {
-		result.Events = []model.EventsModel{}
-	}
-	if result.News == nil {
-		result.News = []model.NewsModel{}
-	}
-	if result.Warnings == nil {
-		result.Warnings = &model.WarningsModel{}
+	if result.Contents == nil {
+		result.Contents = &[]model.ContentsModel{}
 	}
 	return result, nil
 }

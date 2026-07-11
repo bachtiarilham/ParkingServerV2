@@ -27,21 +27,20 @@ func (r *HomeRepositoryImpl) GetJukirHome(ctx context.Context, reqModel model.Ge
 		return nil, err
 	}
 
-	events, news, err := r.getContents(ctx, 10, 0)
+	contents, err := r.getContents(ctx, reqModel.UserID)
 	if err != nil {
 		return nil, err
 	}
 
-	warnings, err := r.getWarnings(ctx, reqModel.UserID)
+	warnings, err := r.getUnreadNotifCounts(ctx, reqModel.UserID)
 	if err != nil {
 		return nil, err
 	}
 
 	return &model.JukirHomeModel{
-		Profile:  profile,
-		Events:   events,
-		News:     news,
-		Warnings: warnings,
+		Profile:          profile,
+		Contents:         &contents,
+		UnreadNotifCount: warnings,
 	}, nil
 }
 
@@ -54,21 +53,20 @@ func (r *HomeRepositoryImpl) GetCustomerHome(ctx context.Context, reqModel model
 		return nil, err
 	}
 
-	events, news, err := r.getContents(ctx, 10, 0)
+	contents, err := r.getContents(ctx, reqModel.UserID)
 	if err != nil {
 		return nil, err
 	}
 
-	warnings, err := r.getWarnings(ctx, reqModel.UserID)
+	warnings, err := r.getUnreadNotifCounts(ctx, reqModel.UserID)
 	if err != nil {
 		return nil, err
 	}
 
 	return &model.CustomerHomeModel{
-		Profile:  profile,
-		Events:   events,
-		News:     news,
-		Warnings: warnings,
+		Profile:          profile,
+		Contents:         &contents,
+		UnreadNotifCount: warnings,
 	}, nil
 }
 
@@ -135,47 +133,27 @@ func (r *HomeRepositoryImpl) getCustomerProfile(ctx context.Context, userID int6
 	LIMIT 1;
 	`
 
-	var (
-		profile                 profileModel.CustomerModel
-		userIDCol               sql.NullInt64
-		fullName                sql.NullString
-		username                sql.NullString
-		email                   sql.NullString
-		phone                   sql.NullString
-		photoURL                sql.NullString
-		roleCode                sql.NullString
-		roleName                sql.NullString
-		saldo                   sql.NullInt64
-		activeMembershipID      sql.NullInt64
-		membershipPackageName   sql.NullString
-		membershipExpiredAt     sql.NullTime
-		membershipPackageCode   sql.NullString
-		membershipStatus        sql.NullString
-		activeParkingSessionID  sql.NullInt64
-		totalParkingCount       sql.NullInt64
-		totalPaymentAmount      sql.NullInt64
-		unreadNotificationCount sql.NullInt64
-	)
+	var row customerProfileRow
 
 	err := r.db.QueryRowContext(ctx, query, userID).Scan(
-		&userIDCol,
-		&fullName,
-		&username,
-		&email,
-		&phone,
-		&photoURL,
-		&roleCode,
-		&roleName,
-		&saldo,
-		&activeMembershipID,
-		&membershipPackageName,
-		&membershipExpiredAt,
-		&membershipPackageCode,
-		&membershipStatus,
-		&activeParkingSessionID,
-		&totalParkingCount,
-		&totalPaymentAmount,
-		&unreadNotificationCount,
+		&row.UserID,
+		&row.FullName,
+		&row.Username,
+		&row.Email,
+		&row.Phone,
+		&row.PhotoURL,
+		&row.RoleCode,
+		&row.RoleName,
+		&row.Saldo,
+		&row.ActiveMembershipID,
+		&row.MembershipPackageName,
+		&row.MembershipExpiredAt,
+		&row.MembershipPackageCode,
+		&row.MembershipStatus,
+		&row.ActiveParkingSessionID,
+		&row.TotalParkingCount,
+		&row.TotalPaymentAmount,
+		&row.UnreadNotificationCount,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -184,28 +162,7 @@ func (r *HomeRepositoryImpl) getCustomerProfile(ctx context.Context, userID int6
 		return nil, fmt.Errorf("get customer profile: %w", err)
 	}
 
-	profile.UserId = userIDCol.Int64
-	profile.FullName = fullName.String
-	profile.Username = username.String
-	profile.Email = email.String
-	profile.Phone = phone.String
-	profile.PhotoUrl = photoURL.String
-	profile.RoleCode = roleCode.String
-	profile.RoleName = roleName.String
-	profile.Saldo = saldo.Int64
-	profile.ActiveMembershipId = activeMembershipID.Int64
-	profile.MembershipPackageName = membershipPackageName.String
-	profile.MembershipPackageCode = membershipPackageCode.String
-	profile.MembershipStatus = membershipStatus.String
-	profile.ActiveParkingSession = activeParkingSessionID.Int64
-	profile.TotalParkingCount = totalParkingCount.Int64
-	profile.TotalPaymentAmount = totalPaymentAmount.Int64
-	profile.UnreadNotificationCount = unreadNotificationCount.Int64
-	if membershipExpiredAt.Valid {
-		profile.MembershipExpiredAt = membershipExpiredAt.Time
-	}
-
-	return &profile, nil
+	return mapCustomerProfileRow(row), nil
 
 }
 
@@ -290,69 +247,38 @@ func (r *HomeRepositoryImpl) getJukirProfile(ctx context.Context, userID int64) 
 	LIMIT 1;
 	`
 
-	var (
-		profile                 profileModel.JukirModel
-		userIDCol               sql.NullInt64
-		nik                     sql.NullString
-		fullName                sql.NullString
-		username                sql.NullString
-		email                   sql.NullString
-		phone                   sql.NullString
-		photoURL                sql.NullString
-		isVerified              sql.NullBool
-		roleID                  sql.NullInt64
-		roleCode                sql.NullString
-		roleName                sql.NullString
-		saldo                   sql.NullInt64
-		locationID              sql.NullInt64
-		locationCode            sql.NullString
-		locationName            sql.NullString
-		address                 sql.NullString
-		centerLatitude          sql.NullFloat64
-		centerLongitude         sql.NullFloat64
-		radiusMeter             sql.NullInt64
-		areaID                  sql.NullInt64
-		areaName                sql.NullString
-		zoneID                  sql.NullInt64
-		zoneName                sql.NullString
-		assignmentEffectiveFrom sql.NullTime
-		assignmentEffectiveTo   sql.NullTime
-		todayIncome             sql.NullInt64
-		totalIncome             sql.NullInt64
-		todayTransactionCount   sql.NullInt64
-		unreadNotificationCount sql.NullInt64
-	)
+	var row jukirProfileRow
 
 	err := r.db.QueryRowContext(ctx, query, userID).Scan(
-		&userIDCol,
-		&nik,
-		&fullName,
-		&username,
-		&email,
-		&phone,
-		&photoURL,
-		&isVerified,
-		&roleID,
-		&roleCode,
-		&roleName,
-		&saldo,
-		&locationID,
-		&locationCode,
-		&locationName,
-		&address,
-		&centerLatitude,
-		&centerLongitude,
-		&radiusMeter,
-		&areaID,
-		&areaName,
-		&zoneID,
-		&zoneName,
-		&assignmentEffectiveFrom,
-		&assignmentEffectiveTo,
-		&todayIncome,
-		&totalIncome,
-		&todayTransactionCount,
-		&unreadNotificationCount,
+		&row.UserID,
+		&row.Nik,
+		&row.FullName,
+		&row.Username,
+		&row.Email,
+		&row.Phone,
+		&row.PhotoURL,
+		&row.IsVerified,
+		&row.RoleID,
+		&row.RoleCode,
+		&row.RoleName,
+		&row.Saldo,
+		&row.LocationID,
+		&row.LocationCode,
+		&row.LocationName,
+		&row.Address,
+		&row.CenterLatitude,
+		&row.CenterLongitude,
+		&row.RadiusMeter,
+		&row.AreaID,
+		&row.AreaName,
+		&row.ZoneID,
+		&row.ZoneName,
+		&row.AssignmentEffectiveFrom,
+		&row.AssignmentEffectiveTo,
+		&row.TodayIncome,
+		&row.TotalIncome,
+		&row.TodayTransactionCount,
+		&row.UnreadNotificationCount,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -361,195 +287,114 @@ func (r *HomeRepositoryImpl) getJukirProfile(ctx context.Context, userID int64) 
 		return nil, fmt.Errorf("get jukir profile: %w", err)
 	}
 
-	if userIDCol.Valid {
-		profile.UserId = userIDCol.Int64
-	}
-	if nik.Valid {
-		profile.Nik = nik.String
-	}
-	if fullName.Valid {
-		profile.FullName = fullName.String
-	}
-	if username.Valid {
-		profile.Username = username.String
-	}
-	if email.Valid {
-		profile.Email = email.String
-	}
-	if phone.Valid {
-		profile.Phone = phone.String
-	}
-	if photoURL.Valid {
-		profile.PhotoUrl = photoURL.String
-	}
-	if isVerified.Valid {
-		profile.IsVerified = isVerified.Bool
-	}
-	if roleID.Valid {
-		profile.RoleId = roleID.Int64
-	}
-	if roleCode.Valid {
-		profile.RoleCode = roleCode.String
-	}
-	if roleName.Valid {
-		profile.RoleName = roleName.String
-	}
-	if saldo.Valid {
-		profile.Saldo = saldo.Int64
-	}
-	if locationID.Valid {
-		profile.LocationId = locationID.Int64
-	}
-	if locationCode.Valid {
-		profile.LocationCode = locationCode.String
-	}
-	if locationName.Valid {
-		profile.LocationName = locationName.String
-	}
-	if address.Valid {
-		profile.Address = address.String
-	}
-	if centerLatitude.Valid {
-		profile.CenterLatitude = centerLatitude.Float64
-	}
-	if centerLongitude.Valid {
-		profile.CenterLongitude = centerLongitude.Float64
-	}
-	if radiusMeter.Valid {
-		profile.RadiusMeter = radiusMeter.Int64
-	}
-	if areaID.Valid {
-		profile.AreaId = areaID.Int64
-	}
-	if areaName.Valid {
-		profile.AreaName = areaName.String
-	}
-	if zoneID.Valid {
-		profile.ZoneId = zoneID.Int64
-	}
-	if zoneName.Valid {
-		profile.ZoneName = zoneName.String
-	}
-	if todayIncome.Valid {
-		profile.TodayIncome = todayIncome.Int64
-	}
-	if totalIncome.Valid {
-		profile.TotalIncome = totalIncome.Int64
-	}
-	if todayTransactionCount.Valid {
-		profile.TodayTransactionCount = todayTransactionCount.Int64
-	}
-	if unreadNotificationCount.Valid {
-		profile.UnreadNotificationCount = unreadNotificationCount.Int64
-	}
-	if assignmentEffectiveFrom.Valid {
-		profile.AssignmentEffectiveFrom = assignmentEffectiveFrom.Time
-	}
-	if assignmentEffectiveTo.Valid {
-		profile.AssignmentEffectiveTo = assignmentEffectiveTo.Time
-	}
-
-	return &profile, nil
+	return mapJukirProfileRow(row), nil
 
 }
 
-func (r *HomeRepositoryImpl) getContents(ctx context.Context, limit, offset int) ([]model.EventsModel, []model.NewsModel, error) {
+func (r *HomeRepositoryImpl) getContents(ctx context.Context, userId int64) ([]model.ContentsModel, error) {
 	query := `
-		SELECT id, title, description, publish_date, image_url, content_type
-		FROM customer_news_and_events
-		WHERE is_active = 1
-		ORDER BY publish_date DESC
-		LIMIT ? OFFSET ?
+		SELECT
+			ci.id AS contentId,
+
+			mct.id AS contentTypeId,
+			mct.content_type_code AS contentTypeCode,
+			mct.content_type_name AS contentTypeName,
+
+			ci.title,
+			ci.summary,
+			ci.body,
+			ci.thumbnail_url AS thumbnailUrl,
+			ci.banner_url AS bannerUrl,
+
+			ci.event_location AS eventLocation,
+			ci.event_start_at AS eventStartAt,
+			ci.event_end_at AS eventEndAt,
+
+			ci.publish_at AS publishAt,
+			ci.expired_at AS expiredAt,
+			ci.priority
+
+		FROM user_identity ui
+
+		JOIN content_target_role ctr
+			ON ctr.role_id = ui.role_id
+
+		JOIN content_item ci
+			ON ci.id = ctr.content_id
+
+		JOIN master_content_type mct
+			ON mct.id = ci.content_type_id
+
+		WHERE ui.id = ?
+		AND ci.status = 'PUBLISHED'
+		AND mct.is_active = 1
+		AND (ci.publish_at IS NULL OR ci.publish_at <= NOW())
+		AND (ci.expired_at IS NULL OR ci.expired_at >= NOW())
+
+		ORDER BY
+			ci.priority DESC,
+			ci.publish_at DESC,
+			ci.created_at DESC
+	
+		LIMIT 6
 	`
 
-	rows, err := r.db.QueryContext(ctx, query, limit, offset)
+	rows, err := r.db.QueryContext(ctx, query, userId)
 	if err != nil {
-		return nil, nil, fmt.Errorf("get events and news: %w", err)
+		return nil, fmt.Errorf("get events and news: %w", err)
 	}
 	defer rows.Close()
 
-	events := []model.EventsModel{}
-	news := []model.NewsModel{}
+	contents := make([]model.ContentsModel, 0)
 
 	for rows.Next() {
-		var (
-			id          int64
-			title       string
-			description string
-			publishDate sql.NullTime
-			imageURL    sql.NullString
-			contentType string
-		)
-
-		if err := rows.Scan(&id, &title, &description, &publishDate, &imageURL, &contentType); err != nil {
-			return nil, nil, fmt.Errorf("scan events/news: %w", err)
+		var row contentsRow
+		if err := rows.Scan(
+			&row.ContentId,
+			&row.ContentTypeId,
+			&row.ContentTypeCode,
+			&row.ContentTypeName,
+			&row.Title,
+			&row.Summary,
+			&row.Body,
+			&row.ThumbnailUrl,
+			&row.BannerUrl,
+			&row.EventLocation,
+			&row.EventStartAt,
+			&row.EventEndAt,
+			&row.PublishAt,
+			&row.ExpiredAt,
+			&row.Priority,
+		); err != nil {
+			return nil, fmt.Errorf("scan contents: %w", err)
 		}
 
-		if contentType == "news" {
-			news = append(news, model.NewsModel{
-				ID:          id,
-				Title:       title,
-				Description: description,
-				Date:        publishDate.Time,
-				ImageURL:    imageURL.String,
-				ContentType: contentType,
-			})
-			continue
-		}
-
-		events = append(events, model.EventsModel{
-			ID:          id,
-			Title:       title,
-			Description: description,
-			Date:        publishDate.Time,
-			ImageURL:    imageURL.String,
-			ContentType: contentType,
-		})
+		contents = append(contents, mapContentsRowToModel(row))
 	}
 
-	return events, news, nil
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate contents: %w", err)
+	}
+
+	return contents, nil
 }
 
-func (r *HomeRepositoryImpl) getWarnings(ctx context.Context, userID int64) (*model.WarningsModel, error) {
-	warnings := &model.WarningsModel{}
+func (r *HomeRepositoryImpl) getUnreadNotifCounts(ctx context.Context, userID int64) (int64, error) {
+	var notifCount int64
 
-	var nik sql.NullString
-	if err := r.db.QueryRowContext(ctx, `SELECT nik FROM system_user WHERE id = ? LIMIT 1`, userID).Scan(&nik); err == nil {
-		if nik.String == "" {
-			warnings.Profile = "Profil belum lengkap"
-		}
+	var unreadNotifCount sql.NullInt64
+	if err := r.db.QueryRowContext(
+		ctx,
+		`
+		SELECT
+			COUNT(*) AS unreadNotificationCount
+		FROM notification_user
+		WHERE user_id = ?
+		AND is_read = 0;
+		`,
+		userID,
+	).Scan(&unreadNotifCount); err == nil {
+		notifCount = 0
 	}
-
-	var openAlertCount int64
-	if err := r.db.QueryRowContext(ctx, `
-		SELECT COUNT(*)
-		FROM admin_alert_event
-		WHERE alert_status = 'open' AND officer_user_id = ?
-	`, userID).Scan(&openAlertCount); err == nil && openAlertCount > 0 {
-		warnings.Parking = fmt.Sprintf("Ada %d alert yang belum ditangani", openAlertCount)
-	}
-
-	var unpaidTxCount int64
-	if err := r.db.QueryRowContext(ctx, `
-		SELECT COUNT(*)
-		FROM financial_parking_transaction
-		WHERE customer_user_id = ? AND transaction_status = 'unpaid'
-	`, userID).Scan(&unpaidTxCount); err != nil && err != sql.ErrNoRows {
-		return nil, fmt.Errorf("get unpaid transactions warning: %w", err)
-	}
-
-	var openDisputeCount int64
-	if err := r.db.QueryRowContext(ctx, `
-		SELECT COUNT(*)
-		FROM financial_dispute_case
-		WHERE opened_by_user_id = ? AND case_status = 'open'
-	`, userID).Scan(&openDisputeCount); err != nil && err != sql.ErrNoRows {
-		return nil, fmt.Errorf("get dispute warning: %w", err)
-	}
-
-	if unpaidTxCount > 0 || openDisputeCount > 0 {
-		warnings.Finance = fmt.Sprintf("Ada %d transaksi belum lunas dan %d sengketa aktif", unpaidTxCount, openDisputeCount)
-	}
-
-	return warnings, nil
+	return notifCount, nil
 }

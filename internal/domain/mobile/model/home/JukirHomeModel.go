@@ -5,8 +5,7 @@ import (
 )
 
 type JukirHomeModel struct {
-	Profile  *model.JukirModel `json:"profile"`
-	Events   []EventsModel     `json:"events"`
-	News     []NewsModel       `json:"news"`
-	Warnings *WarningsModel    `json:"warnings"`
+	Profile          *model.JukirModel `json:"profile"`
+	Contents         *[]ContentsModel  `json:"contents"`
+	UnreadNotifCount int64             `json:"warnings"`
 }

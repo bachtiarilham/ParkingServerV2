@@ -1,7 +1,6 @@
 package home
 
 import (
-	"modulegue/core/utils"
 	dto "modulegue/internal/data/mobile/remote/dto/home"
 	profilemapper "modulegue/internal/data/mobile/remote/mapper/profile"
 	model "modulegue/internal/domain/mobile/model/home"
@@ -10,53 +9,41 @@ import (
 func ToCustomerHomeResponse(result *model.CustomerHomeModel) *dto.CustomerHomeResponseDto {
 	if result == nil {
 		return &dto.CustomerHomeResponseDto{
-			Events: []dto.EventDto{},
-			News:   []dto.NewsDto{},
+			Events: []dto.ContentsDto{},
 		}
 	}
 
 	resp := &dto.CustomerHomeResponseDto{
-		Events: []dto.EventDto{},
-		News:   []dto.NewsDto{},
+		Events: []dto.ContentsDto{},
 	}
 
 	if result.Profile != nil {
 		resp.Profile = profilemapper.ToCustomerDto(result.Profile)
 	}
 
-	if result.Events != nil {
-		for _, ev := range result.Events {
-			resp.Events = append(resp.Events, dto.EventDto{
-				Id:          ev.ID,
-				Title:       ev.Title,
-				Description: ev.Description,
-				Date:        utils.FormatIndonesianDate(ev.Date),
-				ImageUrl:    ev.ImageURL,
-				Tag:         ev.ContentType,
+	if result.Contents != nil {
+		for _, item := range *result.Contents {
+			resp.Events = append(resp.Events, dto.ContentsDto{
+				ContentId:       item.ContentId,
+				ContentTypeId:   item.ContentTypeId,
+				ContentTypeCode: item.ContentTypeCode,
+				ContentTypeName: item.ContentTypeName,
+				Title:           item.Title,
+				Summary:         item.Summary,
+				Body:            item.Body,
+				ThumbnailUrl:    item.ThumbnailUrl,
+				BannerUrl:       item.BannerUrl,
+				EventLocation:   item.EventLocation,
+				EventStartAt:    item.EventStartAt,
+				EventEndAt:      item.EventEndAt,
+				PublishAt:       item.PublishAt,
+				ExpiredAt:       item.ExpiredAt,
+				Priority:        item.Priority,
 			})
 		}
 	}
 
-	if result.News != nil {
-		for _, ev := range result.News {
-			resp.News = append(resp.News, dto.NewsDto{
-				Id:          ev.ID,
-				Title:       ev.Title,
-				Description: ev.Description,
-				Date:        utils.FormatIndonesianDate(ev.Date),
-				ImageUrl:    ev.ImageURL,
-				Tag:         ev.ContentType,
-			})
-		}
-	}
-
-	if result.Warnings != nil {
-		resp.Warnings = &dto.WarningsDto{
-			Profile: result.Warnings.Profile,
-			Parking: result.Warnings.Parking,
-			Finance: result.Warnings.Finance,
-		}
-	}
+	resp.UnreadNotifCount = result.UnreadNotifCount
 
 	return resp
 }
