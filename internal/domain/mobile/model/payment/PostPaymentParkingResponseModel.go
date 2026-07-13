@@ -1,21 +1,27 @@
 package payment
 
-type PostPaymentParkingResponseModel struct {
-	Title               *string                             `json:"title,omitempty"`
-	SuccessTitle        *string                             `json:"success_title,omitempty"`
-	SuccessDescription  *string                             `json:"success_description,omitempty"`
-	TotalAmount         *string                             `json:"total_amount,omitempty"`
-	PaymentStatus       *string                             `json:"payment_status,omitempty"`
-	ReferenceNumber     *string                             `json:"reference_number,omitempty"`
-	VerificationMessage *string                             `json:"verification_message,omitempty"`
-	ThankYouTitle       *string                             `json:"thank_you_title,omitempty"`
-	ThankYouDescription *string                             `json:"thank_you_description,omitempty"`
-	DownloadLabel       *string                             `json:"download_label,omitempty"`
-	BackToHomeLabel     *string                             `json:"back_to_home_label,omitempty"`
-	Details             []PostPaymentParkingDetailItemModel `json:"details,omitempty"`
-}
+import "time"
 
-type PostPaymentParkingDetailItemModel struct {
-	Label *string `json:"label,omitempty"`
-	Value *string `json:"value,omitempty"`
+type PostPaymentParkingResponseModel struct {
+	SessionId         int64
+	SessionCode       string
+	TransactionCode   string
+	PlateNumber       string
+	VehicleTypeCode   string
+	VehicleTypeName   string
+	LocationId        int64
+	LocationName      string
+	AreaId            int64
+	AreaName          string
+	Amount            int64
+	ParkingStatusCode string
+	ParkingStatusName string
+	PaymentStatusCode string
+	PaymentStatusName string
+	PaymentCode       string
+	FailedReason      string
+	ReceiptNumber     int64
+	StartedAt         time.Time
+	PaidAt            time.Time
+	QrExpiredAt       time.Time
 }

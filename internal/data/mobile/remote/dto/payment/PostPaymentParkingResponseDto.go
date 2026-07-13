@@ -1,21 +1,29 @@
 package payment
 
-type PostPaymentParkingResponseDto struct {
-	Title               *string                           `json:"title,omitempty"`
-	SuccessTitle        *string                           `json:"success_title,omitempty"`
-	SuccessDescription  *string                           `json:"success_description,omitempty"`
-	TotalAmount         *string                           `json:"total_amount,omitempty"`
-	PaymentStatus       *string                           `json:"payment_status,omitempty"`
-	ReferenceNumber     *string                           `json:"reference_number,omitempty"`
-	VerificationMessage *string                           `json:"verification_message,omitempty"`
-	ThankYouTitle       *string                           `json:"thank_you_title,omitempty"`
-	ThankYouDescription *string                           `json:"thank_you_description,omitempty"`
-	DownloadLabel       *string                           `json:"download_label,omitempty"`
-	BackToHomeLabel     *string                           `json:"back_to_home_label,omitempty"`
-	Details             []PostPaymentParkingDetailItemDto `json:"details,omitempty"`
-}
+import (
+	"time"
+)
 
-type PostPaymentParkingDetailItemDto struct {
-	Label *string `json:"label,omitempty"`
-	Value *string `json:"value,omitempty"`
+type PostPaymentParkingResponseDto struct {
+	SessionId         int64     `json:"session_id"`
+	SessionCode       string    `json:"session_code"`
+	TransactionCode   string    `json:"trx_code"`
+	PlateNumber       string    `json:"plate_number"`
+	VehicleTypeCode   string    `json:"vhc_type_code"`
+	VehicleTypeName   string    `json:"vhc_type_name"`
+	LocationId        int64     `json:"loc_id"`
+	LocationName      string    `json:"loc_name"`
+	AreaId            int64     `json:"area_id"`
+	AreaName          string    `json:"area_name"`
+	Amount            int64     `json:"amount"`
+	ParkingStatusCode string    `json:"parking_stat_code"`
+	ParkingStatusName string    `json:"parking_stat_name"`
+	PaymentStatusCode string    `json:"payment_stat_code"`
+	PaymentStatusName string    `json:"payment_stat_name"`
+	PaymentCode       string    `json:"payment_code"`
+	FailedReason      string    `json:"failed_reason"`
+	ReceiptNumber     int64     `json:"receipt_number"`
+	StartedAt         time.Time `json:"startedat"`
+	PaidAt            time.Time `json:"paidat"`
+	QrExpiredAt       time.Time `json:"qr_expiredat"`
 }

@@ -13,6 +13,7 @@ import (
 	helperrepo "modulegue/internal/data/mobile/repository_impl/helper"
 	homerepo "modulegue/internal/data/mobile/repository_impl/home"
 	laporanrepo "modulegue/internal/data/mobile/repository_impl/laporan"
+	parkingrepo "modulegue/internal/data/mobile/repository_impl/parking"
 	paymentrepo "modulegue/internal/data/mobile/repository_impl/payment"
 	riwayatrepo "modulegue/internal/data/mobile/repository_impl/riwayat"
 	subscriptionrepo "modulegue/internal/data/mobile/repository_impl/subcription"
@@ -22,6 +23,7 @@ import (
 	helperuc "modulegue/internal/domain/mobile/usecase/helper"
 	homeuc "modulegue/internal/domain/mobile/usecase/home"
 	laporanuc "modulegue/internal/domain/mobile/usecase/laporan"
+	parkinguc "modulegue/internal/domain/mobile/usecase/parking"
 	paymentuc "modulegue/internal/domain/mobile/usecase/payment"
 	riwayatuc "modulegue/internal/domain/mobile/usecase/riwayat"
 	subscriptionuc "modulegue/internal/domain/mobile/usecase/subscription"
@@ -45,7 +47,9 @@ func NewRouter(
 	laporanRepository := laporanrepo.NewLaporanRepositoryImpl(db)
 	riwayatRepository := riwayatrepo.NewRiwayatRepositoryImpl(db)
 	subscriptionRepository := subscriptionrepo.NewSubscriptionRepositoryImpl(db)
+	parkingRepository := parkingrepo.NewParkingRepositoryImpl(db)
 	paymentRepository := paymentrepo.NewPaymentRepositoryImpl(db)
+	statusPaymentRepository := paymentrepo.NewStatusPaymentRepositoryImpl(db)
 	helperRepository := helperrepo.NewHelperRepositoryImpl(db)
 
 	registerUC := authuc.NewRegisterUseCase(authRepository)
@@ -70,9 +74,9 @@ func NewRouter(
 	laporanUC := laporanuc.NewGetLaporanUseCase(laporanRepository)
 	riwayatUC := riwayatuc.NewGetRiwayatUseCase(riwayatRepository)
 	subscriptionUC := subscriptionuc.NewSubscriptionUseCase(subscriptionRepository)
-	postParkingUC := paymentuc.NewPostParkingUseCase(paymentRepository)
+	postParkingUC := parkinguc.NewPostParkingUseCase(parkingRepository)
 	postPaymentParkingUC := paymentuc.NewPostPaymentParkingUseCase(paymentRepository)
-	getPembayaranStatusUC := paymentuc.NewGetPembayaranStatusUseCase(paymentRepository)
+	getPembayaranStatusUC := paymentuc.NewGetPembayaranStatusUseCase(statusPaymentRepository)
 	getLokasiUC := helperuc.NewGetLokasiUseCase(helperRepository)
 	getTarifUC := helperuc.NewGetTarifUseCase(helperRepository)
 

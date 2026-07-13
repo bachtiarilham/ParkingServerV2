@@ -34,6 +34,10 @@ import (
 	paymentUc "modulegue/internal/domain/mobile/usecase/payment"
 	paymentHandler "modulegue/internal/handler/mobile/payment"
 
+	//parking
+	parkingUc "modulegue/internal/domain/mobile/usecase/parking"
+	parkingHandler "modulegue/internal/handler/mobile/parking"
+
 	//helper
 	helperUc "modulegue/internal/domain/mobile/usecase/helper"
 	helperHandler "modulegue/internal/handler/mobile/helper"
@@ -62,7 +66,7 @@ func RegisterRoutes(
 	//subscription
 	subscriptionUc *subscriptionUc.SubscriptionUseCase,
 	//payment
-	postParkingUc *paymentUc.PostParkingUseCase,
+	postParkingUc *parkingUc.PostParkingUseCase,
 	postPaymentParkingUc *paymentUc.PostPaymentParkingUseCase,
 	getPembayaranStatusUc *paymentUc.GetPembayaranStatusUseCase,
 	//helper
@@ -96,8 +100,9 @@ func RegisterRoutes(
 	laporanHandler := laporanHandler.NewLaporanHandler(laporanUc)
 	//subscription
 	subscriptionHandler := subscriptionHandler.NewSubscriptionHandler(subscriptionUc)
+	//parking
+	postParkingHandler := parkingHandler.NewPostParkingHandler(postParkingUc)
 	//payment
-	postParkingHandler := paymentHandler.NewPostParkingHandler(postParkingUc)
 	postPaymentParkingHandler := paymentHandler.NewPostPaymentParkingHandler(postPaymentParkingUc)
 	getPembayaranStatusHandler := paymentHandler.NewGetPembayaranStatusHandler(getPembayaranStatusUc)
 	//helper
@@ -151,8 +156,9 @@ func RegisterRoutes(
 	mux.Handle("POST /api/v2/linespot/riwayat", protectedRiwayatHandler)
 	//subscription
 	mux.Handle("GET /api/v2/linespot/subscribe", protectedSubscriptionHandler)
-	//payment
+	//parking
 	mux.Handle("POST /api/v2/linespot/parking", protectedPostParkingHandler)
+	//payment
 	mux.Handle("POST /api/v2/linespot/parking/payment", protectedPostPaymentParkingHandler)
 	mux.Handle("GET /api/v2/linespot/parking/{sessionId}/status", protectedGetPembayaranStatusHandler)
 	//helper

@@ -1,12 +1,17 @@
 package payment
 
 import (
+	"encoding/json"
+	"errors"
 	"net/http"
+	"strings"
 
 	"modulegue/core/response"
+	dto "modulegue/internal/data/mobile/remote/dto/payment"
 	mapper "modulegue/internal/data/mobile/remote/mapper/payment"
 	model "modulegue/internal/domain/mobile/model/payment"
 	usecase "modulegue/internal/domain/mobile/usecase/payment"
+	"modulegue/internal/middleware"
 )
 
 type PostPaymentParkingHandler struct {
@@ -18,12 +23,46 @@ func NewPostPaymentParkingHandler(postPaymentParkingUc *usecase.PostPaymentParki
 }
 
 func (h *PostPaymentParkingHandler) Execute(w http.ResponseWriter, r *http.Request) {
-
-	result, err := h.postPaymentParkingUc.Execute(r.Context(), model.PostPaymentParkingRequestModel{})
-	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "gagal memuat dashboard")
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		response.Error(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
-	response.Success(w, http.StatusOK, "Dashboard dimuat", mapper.ToPostPaymentParkingResponseDto(result))
+	var req dto.PostPaymentParkingRequestDto
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Error(w, http.StatusBadRequest, "request tidak valid")
+		return
+	}
+
+	req.SessionCode = strings.TrimSpace(req.SessionCode)
+	if req.SessionCode == "" {
+		response.Error(w, http.StatusBadRequest, "session_code wajib diisi")
+		return
+	}
+
+	input := mapper.ToPostPaymentParkingRequestModel(&req)
+	if input == nil {
+		response.Error(w, http.StatusBadRequest, "request tidak valid")
+		return
+	}
+	input.CustomerUserId = userID
+
+	result, err := h.postPaymentParkingUc.Execute(r.Context(), *input)
+	if err != nil {
+		if errors.Is(err, model.ErrPaymentAlreadyCompleted) {
+			response.Error(w, http.StatusConflict, "pembayaran sudah dilakukan")
+			return
+		}
+		response.Error(w, http.StatusInternalServerError, "gagal memproses pembayaran")
+		return
+	}
+
+	resp := mapper.ToPostPaymentParkingResponseDto(result)
+	if resp == nil {
+		response.Error(w, http.StatusInternalServerError, "gagal memproses pembayaran")
+		return
+	}
+
+	response.Success(w, http.StatusOK, "pembayaran diproses", resp)
 }

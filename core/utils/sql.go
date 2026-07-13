@@ -2,6 +2,7 @@ package utils
 
 import (
 	"database/sql"
+	"strconv"
 	"time"
 )
 
@@ -17,6 +18,20 @@ func NullInt64Value(v sql.NullInt64) int64 {
 		return 0
 	}
 	return v.Int64
+}
+
+func NullInt64StringValue(v sql.NullInt64) string {
+	if !v.Valid {
+		return ""
+	}
+	return strconv.FormatInt(v.Int64, 10)
+}
+
+func NullInt64Param(v int64) any {
+	if v == 0 {
+		return nil
+	}
+	return v
 }
 
 func NullTimeValue(v sql.NullTime) time.Time {

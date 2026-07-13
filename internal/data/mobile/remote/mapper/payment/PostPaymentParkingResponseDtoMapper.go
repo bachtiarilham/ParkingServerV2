@@ -10,27 +10,27 @@ func ToPostPaymentParkingResponseDto(src *model.PostPaymentParkingResponseModel)
 		return nil
 	}
 
-	result := &dto.PostPaymentParkingResponseDto{
-		Title:               src.Title,
-		SuccessTitle:        src.SuccessTitle,
-		SuccessDescription:  src.SuccessDescription,
-		TotalAmount:         src.TotalAmount,
-		PaymentStatus:       src.PaymentStatus,
-		ReferenceNumber:     src.ReferenceNumber,
-		VerificationMessage: src.VerificationMessage,
-		ThankYouTitle:       src.ThankYouTitle,
-		ThankYouDescription: src.ThankYouDescription,
-		DownloadLabel:       src.DownloadLabel,
-		BackToHomeLabel:     src.BackToHomeLabel,
-		Details:             []dto.PostPaymentParkingDetailItemDto{},
+	return &dto.PostPaymentParkingResponseDto{
+		SessionId:         src.SessionId,
+		SessionCode:       src.SessionCode,
+		TransactionCode:   src.TransactionCode,
+		PlateNumber:       src.PlateNumber,
+		VehicleTypeCode:   src.VehicleTypeCode,
+		VehicleTypeName:   src.VehicleTypeName,
+		LocationId:        src.LocationId,
+		LocationName:      src.LocationName,
+		AreaId:            src.AreaId,
+		AreaName:          src.AreaName,
+		Amount:            src.Amount,
+		ParkingStatusCode: src.ParkingStatusCode,
+		ParkingStatusName: src.ParkingStatusName,
+		PaymentStatusCode: src.PaymentStatusCode,
+		PaymentStatusName: src.PaymentStatusName,
+		PaymentCode:       src.PaymentCode,
+		FailedReason:      src.FailedReason,
+		ReceiptNumber:     src.ReceiptNumber,
+		StartedAt:         src.StartedAt,
+		PaidAt:            src.PaidAt,
+		QrExpiredAt:       src.QrExpiredAt,
 	}
-
-	for _, item := range src.Details {
-		result.Details = append(result.Details, dto.PostPaymentParkingDetailItemDto{
-			Label: item.Label,
-			Value: item.Value,
-		})
-	}
-
-	return result
 }

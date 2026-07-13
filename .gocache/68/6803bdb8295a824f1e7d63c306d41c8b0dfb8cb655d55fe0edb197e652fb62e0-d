@@ -1,0 +1,9 @@
+./AuthRepository.go
+./HelperRepository.go
+./HomeRepository.go
+./LaporanRepository.go
+./ParkingRepository.go
+./PaymentRepository.go
+./RiwayatRepository.go
+./SessionRepository.go
+./SubscriptionRepository.go

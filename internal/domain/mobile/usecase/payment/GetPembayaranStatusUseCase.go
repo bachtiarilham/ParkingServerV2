@@ -7,11 +7,11 @@ import (
 )
 
 type GetPembayaranStatusUseCase struct {
-	getPembayaranStatusRepo repository.PaymentRepository
+	getPembayaranStatusRepo repository.StatusPaymentRepository
 }
 
 func NewGetPembayaranStatusUseCase(
-	getPembayaranStatusRepo repository.PaymentRepository,
+	getPembayaranStatusRepo repository.StatusPaymentRepository,
 ) *GetPembayaranStatusUseCase {
 	return &GetPembayaranStatusUseCase{
 		getPembayaranStatusRepo: getPembayaranStatusRepo,
@@ -23,10 +23,9 @@ func (uc *GetPembayaranStatusUseCase) Execute(ctx context.Context, sessionId str
 	if err != nil {
 		return "", fmt.Errorf("get pembayaran status: %w", err)
 	}
-
-	if result == nil {
-		return "", nil
+	if result != nil {
+		return "pembayaran berhasil", nil
 	}
 
-	return "pembayaran berhasil", nil
+	return "", nil
 }

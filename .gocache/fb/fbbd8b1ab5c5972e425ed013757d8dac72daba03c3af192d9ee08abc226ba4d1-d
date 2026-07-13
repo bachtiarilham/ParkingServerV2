@@ -1,5 +1,0 @@
-./change_password.go
-./login.go
-./logout.go
-./refresh_token.go
-./register.go

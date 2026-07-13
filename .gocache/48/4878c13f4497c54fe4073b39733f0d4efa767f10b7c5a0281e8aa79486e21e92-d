@@ -1,0 +1,12 @@
+./ChangePassReqModel.go
+./ChangePassRespModel.go
+./LoginRequestModel.go
+./LoginRespModel.go
+./LogoutReqModel.go
+./LogoutRespModel.go
+./RefreshTokenReqModel.go
+./RefreshTokenRespModel.go
+./RegisterRequestModel.go
+./SessionModel.go
+./TokenSetModel.go
+./UserExistRespModel.go
