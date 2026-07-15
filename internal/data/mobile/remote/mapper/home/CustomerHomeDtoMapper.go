@@ -43,7 +43,5 @@ func ToCustomerHomeResponse(result *model.CustomerHomeModel) *dto.CustomerHomeRe
 		}
 	}
 
-	resp.UnreadNotifCount = result.UnreadNotifCount
-
 	return resp
 }

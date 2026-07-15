@@ -22,7 +22,7 @@ type CustomerDto struct {
 	MembershipExpiredAt     time.Time `json:"membership_expired_at"`
 	MembershipPackageCode   string    `json:"membership_package_code"`
 	MembershipStatus        string    `json:"membership_status"`
-	ActiveParkingSession    int64     `json:"active_parking_session"`
+	ActiveParkingSessionId  int64     `json:"active_parking_session_id"`
 	TotalParkingCount       int64     `json:"total_parking_count"`
 	TotalPaymentAmount      int64     `json:"total_payment_amount"`
 	UnreadNotificationCount int64     `json:"unread_notification_count"`

@@ -5,7 +5,7 @@ import (
 	model "modulegue/internal/domain/mobile/model/auth"
 )
 
-func ToLoginRequestModel(src *dto.LoginRequestDto) *model.LoginRequestModel {
+func ToLoginReqModel(src *dto.LoginRequestDto) *model.LoginRequestModel {
 	if src == nil {
 		return nil
 	}

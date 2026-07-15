@@ -43,7 +43,5 @@ func ToJukirHomeResponse(result *model.JukirHomeModel) *dto.JukirHomeResponseDto
 		}
 	}
 
-	resp.UnreadNotifCount = result.UnreadNotifCount
-
 	return resp
 }

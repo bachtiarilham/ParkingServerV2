@@ -1,0 +1,3 @@
+./LoginDtoMapper.go
+./RegisterDtoMapper.go
+./SessionDtoMapper.go

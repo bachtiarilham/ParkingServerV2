@@ -27,7 +27,7 @@ func ToCustomerDto(src *model.CustomerModel) *dto.CustomerDto {
 		MembershipExpiredAt:     src.MembershipExpiredAt,
 		MembershipPackageCode:   src.MembershipPackageCode,
 		MembershipStatus:        src.MembershipStatus,
-		ActiveParkingSession:    src.ActiveParkingSession,
+		ActiveParkingSessionId:  src.ActiveParkingSession,
 		TotalParkingCount:       src.TotalParkingCount,
 		TotalPaymentAmount:      src.TotalPaymentAmount,
 		UnreadNotificationCount: src.UnreadNotificationCount,

@@ -36,7 +36,7 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 	req.Identity = normalizeIdentity(req.Identity)
 	req.Password = strings.TrimSpace(req.Password)
 
-	requestModel := mapper.ToLoginRequestModel(&req)
+	requestModel := mapper.ToLoginReqModel(&req)
 	if requestModel == nil {
 		response.Error(w, http.StatusBadRequest, "request tidak valid")
 		return
@@ -44,7 +44,7 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 	requestModel.DeviceName = middleware.UserAgent(r)
 	requestModel.DeviceId = middleware.ClientIP(r)
 
-	token, _, err := h.loginUc.Execute(r.Context(), *requestModel)
+	token, lol, err := h.loginUc.Execute(r.Context(), *requestModel)
 	if err != nil {
 		if errors.Is(err, errorstring.ErrInvalidCredentials) {
 			response.Error(w, http.StatusUnauthorized, "identity atau password salah")
@@ -59,7 +59,7 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := mapper.ToTokenSetDto(token)
+	resp := mapper.ToLoginRespDto(token, lol.RoleId)
 	if resp == nil {
 		response.Error(w, http.StatusInternalServerError, "terjadi kesalahan internal")
 		return

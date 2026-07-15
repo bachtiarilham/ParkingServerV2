@@ -110,9 +110,7 @@ func (uc *LoginUseCase) Execute(ctx context.Context, reqModel model.LoginRequest
 			RefreshToken:     refreshToken,
 			ExpiresInSeconds: accessExp.Unix(),
 		}, &model.LoginRespModel{
-			UserId:       hasilLogin.UserId,
-			RoleId:       hasilLogin.RoleId,
-			PasswordHash: hasilLogin.PasswordHash,
+			RoleId: hasilLogin.RoleId,
 		}, nil
 
 }

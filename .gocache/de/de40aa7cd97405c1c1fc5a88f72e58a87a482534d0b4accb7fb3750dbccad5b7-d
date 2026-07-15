@@ -1,0 +1,6 @@
+./ChangePasswordRequestDto.go
+./LoginRequestDto.go
+./LogoutRequestDto.go
+./RefreshTokenRequestDto.go
+./RegisterRequestDto.go
+./TokenSetDto.go

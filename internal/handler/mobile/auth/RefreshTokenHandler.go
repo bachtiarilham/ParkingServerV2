@@ -51,12 +51,10 @@ func (h *RefreshTokenHandler) Execute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := dto.RefreshTokenResponseDto{
-		TokenSetDto: dto.TokenSetDto{
-			AccessToken:      result.AccessToken,
-			RefreshToken:     result.RefreshToken,
-			ExpiresInSeconds: result.ExpiresAt,
-		},
+	resp := dto.TokenSetDto{
+		AccessToken:      result.AccessToken,
+		RefreshToken:     result.RefreshToken,
+		ExpiresInSeconds: result.ExpiresAt,
 	}
 
 	response.Success(w, http.StatusOK, "token diperbarui", resp)
