@@ -106,9 +106,9 @@ func (uc *LoginUseCase) Execute(ctx context.Context, reqModel model.LoginRequest
 	}
 
 	return &model.TokenSetModel{
-			AccessToken:      accessToken,
-			RefreshToken:     refreshToken,
-			ExpiresInSeconds: accessExp.Unix(),
+			AccessToken:  accessToken,
+			RefreshToken: refreshToken,
+			ExpiresIn:    accessExp.Unix(),
 		}, &model.LoginRespModel{
 			RoleId: hasilLogin.RoleId,
 		}, nil

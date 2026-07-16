@@ -149,7 +149,9 @@ func RegisterRoutes(
 	mux.Handle("POST /api/v2/linespot/auth/change-password", protectedChangePasswordHandler)
 
 	//home
-	mux.Handle("GET /api/v2/linespot/home", protectedHomeHandler)
+	mux.Handle("GET /api/v2/linespot/customer_home", protectedHomeHandler)
+	mux.Handle("GET /api/v2/linespot/jukir_home", protectedHomeHandler)
+
 	//laporan
 	mux.Handle("POST /api/v2/linespot/laporan", protectedLaporanHandler)
 	//riwayat

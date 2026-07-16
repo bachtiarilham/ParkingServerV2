@@ -90,7 +90,6 @@ func (r *HomeRepositoryImpl) getCustomerProfile(ctx context.Context, userID int6
 		sch.membership_expired_at,
 
 		mp.package_code AS membership_package_code,
-		mp.package_name AS membership_package_real_name,
 		mu.status AS membership_status,
 
 		sch.active_parking_session_id,

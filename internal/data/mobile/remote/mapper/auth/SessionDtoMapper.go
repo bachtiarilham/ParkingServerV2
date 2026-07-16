@@ -9,7 +9,7 @@ func ToTokenSetDto(result *model.TokenSetModel) *dto.TokenSetDto {
 	return &dto.TokenSetDto{
 		AccessToken:      result.AccessToken,
 		RefreshToken:     result.RefreshToken,
-		ExpiresInSeconds: result.ExpiresInSeconds,
+		ExpiresInSeconds: result.ExpiresIn,
 	}
 }
 
