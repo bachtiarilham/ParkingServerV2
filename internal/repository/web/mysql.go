@@ -27,21 +27,44 @@ func (r *MySQLRepository) FindAdminByIdentity(ctx context.Context, identity stri
 		return nil, fmt.Errorf("identity wajib diisi")
 	}
 
-	row := r.db.QueryRowContext(ctx, `
-		SELECT
-			su.id,
-			COALESCE(su.full_name, ''),
-			COALESCE(su.phone_number, ''),
-			COALESCE(su.email, ''),
-			COALESCE(su.username, ''),
-			COALESCE(su.role_id, 0),
-			COALESCE(sr.role_code, ''),
-			COALESCE(su.password_hash, ''),
-			COALESCE(su.is_verified, 0)
-		FROM system_user su
-		LEFT JOIN system_role sr ON sr.id = su.role_id
-		WHERE su.username = ? OR su.email = ? OR su.phone_number = ?
-		LIMIT 1`,
+	row := r.db.QueryRowContext(ctx,
+		//  `
+		// SELECT
+		// 	su.id,
+		// 	COALESCE(su.full_name, ''),
+		// 	COALESCE(su.phone_number, ''),
+		// 	COALESCE(su.email, ''),
+		// 	COALESCE(su.username, ''),
+		// 	COALESCE(su.role_id, 0),
+		// 	COALESCE(sr.role_code, ''),
+		// 	COALESCE(su.password_hash, ''),
+		// 	COALESCE(su.is_verified, 0)
+		// FROM system_user su
+		// LEFT JOIN system_role sr ON sr.id = su.role_id
+		// WHERE su.username = ? OR su.email = ? OR su.phone_number = ?
+		// LIMIT 1`,
+		`SELECT
+		ui.id AS userId,
+		ui.role_id AS roleId,
+		ua.password_hash AS passwordHash
+	FROM user_identity ui
+	JOIN user_auth ua
+		ON ua.user_id = ui.id
+	JOIN master_role mr
+		ON mr.id = ui.role_id
+	WHERE
+		(
+			ui.username = ?
+			OR ui.email = ?
+			OR ui.phone_number = ?
+		)
+		AND ui.status = 'ACTIVE'
+		AND mr.is_active = 1
+		AND (
+			ua.locked_until IS NULL
+			OR ua.locked_until <= NOW()
+		)
+	LIMIT 1`,
 		identity, identity, identity,
 	)
 

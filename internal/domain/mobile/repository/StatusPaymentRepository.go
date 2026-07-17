@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	model "modulegue/internal/domain/mobile/model/payment"
+	model "modulegue/internal/domain/mobile/model/payment_parking"
 )
 
 type StatusPaymentRepository interface {

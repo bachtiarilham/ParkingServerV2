@@ -17,11 +17,14 @@ type Config struct {
 	DBUser             string
 	DBPassword         string
 	JWTSecret          string
+	MidtransServerKey  string
+	MidtransClientKey  string
 	QueueSQLitePath    string
 	QueueWorkerCount   int
 	QueueLeaseSeconds  int
 	QueueRetrySeconds  int
 	QueueWaitTimeoutMS int
+	AdminFeeTopUp      int64
 	AccessTokenMinutes time.Duration
 	RefreshTokenHours  time.Duration
 	OTPExpiryMinutes   int
@@ -38,11 +41,14 @@ func Load() Config {
 		DBUser:             getEnv("DB_USER", "root"),
 		DBPassword:         getEnvAny([]string{"DB_PASSWORD", "DB_PASS"}, "root"),
 		JWTSecret:          getEnv("JWT_SECRET", "saya-janji-ngoding-pakai-doa-dan-kesabaran-ekstra"),
+		MidtransServerKey:  getEnv("MIDTRANS_SERVER_KEY", ""),
+		MidtransClientKey:  getEnv("MIDTRANS_CLIENT_KEY", ""),
 		QueueSQLitePath:    getEnv("QUEUE_SQLITE_PATH", "./var/park-server-queue.db"),
 		QueueWorkerCount:   getEnvAsInt("QUEUE_WORKER_COUNT", 4),
 		QueueLeaseSeconds:  getEnvAsInt("QUEUE_LEASE_SECONDS", 30),
 		QueueRetrySeconds:  getEnvAsInt("QUEUE_RETRY_SECONDS", 5),
 		QueueWaitTimeoutMS: getEnvAsInt("QUEUE_WAIT_TIMEOUT_MS", 1500),
+		AdminFeeTopUp:      int64(getEnvAsInt("TOPUP_ADMIN_FEE", 2000)),
 		AccessTokenMinutes: time.Duration(getEnvAsInt("ACCESS_TOKEN_MINUTES", 60)) * time.Minute,
 		RefreshTokenHours:  time.Duration(getEnvAsInt("REFRESH_TOKEN_HOURS", 24*30)) * time.Hour,
 		OTPExpiryMinutes:   getEnvAsInt("OTP_EXPIRY_MINUTES", 10),

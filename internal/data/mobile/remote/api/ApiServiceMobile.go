@@ -31,8 +31,8 @@ import (
 	subscriptionHandler "modulegue/internal/handler/mobile/subscription"
 
 	//payment
-	paymentUc "modulegue/internal/domain/mobile/usecase/payment"
-	paymentHandler "modulegue/internal/handler/mobile/payment"
+	paymentUc "modulegue/internal/domain/mobile/usecase/payment_parking"
+	paymentHandler "modulegue/internal/handler/mobile/payment_parking"
 
 	//parking
 	parkingUc "modulegue/internal/domain/mobile/usecase/parking"
@@ -41,6 +41,11 @@ import (
 	//helper
 	helperUc "modulegue/internal/domain/mobile/usecase/helper"
 	helperHandler "modulegue/internal/handler/mobile/helper"
+
+	//topup
+	topupUc "modulegue/internal/domain/mobile/usecase/topup"
+	getTopUpStatusHandler "modulegue/internal/handler/mobile/topup"
+	topupHandler "modulegue/internal/handler/mobile/topup"
 	// mobile_handler "modulegue/internal/delivery/mobile/customer/handler"
 	// jukir_handler "modulegue/internal/delivery/mobile/handler"
 	// shared_handler "modulegue/internal/delivery/shared/handler"
@@ -69,10 +74,15 @@ func RegisterRoutes(
 	postParkingUc *parkingUc.PostParkingUseCase,
 	postPaymentParkingUc *paymentUc.PostPaymentParkingUseCase,
 	getPembayaranStatusUc *paymentUc.GetPembayaranStatusUseCase,
+	//topup
+	topupUc *topupUc.TopUpUseCase,
+	topupCallbackUc *topupUc.TopUpCallbackUseCase,
+	getStatusTopUpUc *topupUc.GetTopUpStatusUseCase,
+	midtransVerifier topupHandler.MidtransSignatureVerifier,
 	//helper
 	GetLokasiUc *helperUc.GetLokasiUseCase,
 	GetTarifUc *helperUc.GetTarifUseCase,
-
+	GetNominalTopUpUc *helperUc.GetNominalTopUpUseCase,
 	//setting
 	// getUserProfileUC *useruc.GetProfileUseCase,
 	//payment
@@ -105,10 +115,14 @@ func RegisterRoutes(
 	//payment
 	postPaymentParkingHandler := paymentHandler.NewPostPaymentParkingHandler(postPaymentParkingUc)
 	getPembayaranStatusHandler := paymentHandler.NewGetPembayaranStatusHandler(getPembayaranStatusUc)
+	//topup
+	topupCreateHandler := topupHandler.NewSubscriptionHandler(topupUc)
+	topupCallbackHandler := topupHandler.NewMidtransNotificationHandler(topupCallbackUc, midtransVerifier)
+	topupStatusHandler := getTopUpStatusHandler.NewGetTopUpStatusHandler(getStatusTopUpUc)
 	//helper
 	getLokasiHandler := helperHandler.NewGetLocationHandler(GetLokasiUc)
 	getTarifHandler := helperHandler.NewGetTarifHandler(GetTarifUc)
-
+	getNominalTopUpHandler := helperHandler.NewGetNominalTopUpHandler(GetNominalTopUpUc)
 	// scanHandler := mobile_handler.NewScanHandler(submitQrUC, scanDetailUC)
 	// userHandler := shared_handler.NewUserHandler(getUserProfileUC)
 	// paymentHandler := jukir_handler.NewPaymentHandler(initiatePaymentUC)
@@ -131,10 +145,12 @@ func RegisterRoutes(
 	protectedPostParkingHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(postParkingHandler.Execute))
 	protectedPostPaymentParkingHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(postPaymentParkingHandler.Execute))
 	protectedGetPembayaranStatusHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(getPembayaranStatusHandler.Execute))
+	//topup
+	protectedGetTopUpStatusHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(topupStatusHandler.Execute))
 	//helper
 	protectedGetLokasiHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(getLokasiHandler.Execute))
 	protectedGetTarifHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(getTarifHandler.Execute))
-
+	protectedGetNominalTopUpHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(getNominalTopUpHandler.Execute))
 	// protectedProfileHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(userHandler.GetCurrentUser))
 	// protectedQrGenerator := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(qrHandler.GenerateQR))
 	// protectedPaymentHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(paymentHandler.InitiatePayment))
@@ -151,7 +167,6 @@ func RegisterRoutes(
 	//home
 	mux.Handle("GET /api/v2/linespot/customer_home", protectedHomeHandler)
 	mux.Handle("GET /api/v2/linespot/jukir_home", protectedHomeHandler)
-
 	//laporan
 	mux.Handle("POST /api/v2/linespot/laporan", protectedLaporanHandler)
 	//riwayat
@@ -163,9 +178,15 @@ func RegisterRoutes(
 	//payment
 	mux.Handle("POST /api/v2/linespot/parking/payment", protectedPostPaymentParkingHandler)
 	mux.Handle("GET /api/v2/linespot/parking/{sessionId}/status", protectedGetPembayaranStatusHandler)
+	//topup
+	mux.Handle("POST /api/v2/linespot/topup/create", middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(topupCreateHandler.Execute)))
+	mux.Handle("GET /api/v2/linespot/topup/{topupCode}/status", protectedGetTopUpStatusHandler)
+	mux.Handle("POST /api/v2/linespot/topup/midtrans/callback", http.HandlerFunc(topupCallbackHandler.Execute))
+
 	//helper
 	mux.Handle("GET /api/v2/linespot/get_lokasi", protectedGetLokasiHandler)
 	mux.Handle("GET /api/v2/linespot/get_tarif", protectedGetTarifHandler)
+	mux.Handle("GET /api/v2/linespot/get_nominal_topup", protectedGetNominalTopUpHandler)
 
 	//route dengan otentikasi (middleware JWT)
 	// mux.Handle("GET /api/v2/linespot/qr/generate", protectedQrGenerator)

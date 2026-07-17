@@ -1,33 +1,34 @@
 package subscription
 
+import "time"
+
 type SubscriptionResponseDto struct {
-	StatusCard  *StatusCardDto   `json:"status_card,omitempty"`
-	PackageCard []PackageCardDto `json:"package_card,omitempty"`
-	Promo       []PromoDto       `json:"promo,omitempty"`
+	ActivePackageName    string        `json:"package_name"`
+	ActivePackageExpired time.Time     `json:"package_expired"`
+	ActivePackageBenefit []string      `json:"benefit_package"`
+	ListPaket            ListPaket     `json:"list_paket"`
+	PromoTersedia        PromoTersedia `json:"promo_tersedia"`
 }
 
-type StatusCardDto struct {
-	PaketAktif *string `json:"paket_aktif,omitempty"`
-	Kadaluarsa *string `json:"kadaluarsa,omitempty"`
-	Benefit    *string `json:"benefit,omitempty"`
+type ListPaket struct {
+	Bulanan   []DetailPaket `json:"bulanan"`
+	EnamBulan []DetailPaket `json:"enam_bulan"`
+	Tahunan   []DetailPaket `json:"tahunan"`
 }
 
-type PackageCardDto struct {
-	NamaPaket    *string  `json:"nama_paket,omitempty"`
-	Harga        *int64   `json:"harga,omitempty"`
-	MasaBerlaku  *string  `json:"masa_berlaku,omitempty"`
-	JumlahDiskon *int64   `json:"jumlah_diskon,omitempty"`
-	Deskripsi    *string  `json:"deskripsi,omitempty"`
-	Benefit      []string `json:"benefit,omitempty"`
+type DetailPaket struct {
+	NamaPaket      string   `json:"nama_paket"`
+	Harga          int64    `json:"harga"`
+	CoverageLokasi []string `json:"coverage_lokasi"`
+	BenefitPackage []string `json:"benefit_package"`
 }
 
-type PromoDto struct {
-	SNk   []string           `json:"snk,omitempty"`
-	Promo []PromoTerpilihDto `json:"promo,omitempty"`
+type PromoTersedia struct {
+	SyaratDanKetentuan []string      `json:"syarat_dan_ketentuan"`
+	EachPromo          []DetailPromo `json:"each_promo"`
 }
 
-type PromoTerpilihDto struct {
-	NamaPromo    *string `json:"nama_promo,omitempty"`
-	Deskripsi    *string `json:"deskripsi,omitempty"`
-	JumlahDiskon *int64  `json:"jumlah_diskon,omitempty"`
+type DetailPromo struct {
+	NamaPromo   string  `json:"nama_promo"`
+	BesarDiskon float64 `json:"besar_diskon"`
 }

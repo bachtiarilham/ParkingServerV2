@@ -157,3 +157,51 @@ func (r *HelperRepositoryImpl) GetTarif(ctx context.Context, userId int64) (*mod
 
 	return result, nil
 }
+
+func (r *HelperRepositoryImpl) GetNominalTopUp(ctx context.Context) (*model.TopupOptionsResponseModel, error) {
+	rows, err := r.db.QueryContext(
+		ctx,
+		`
+		SELECT
+			id AS optionId,
+			nominal_amount AS nominalAmount,
+			label AS label
+		FROM payment_topup_option
+		WHERE is_active = 1
+		ORDER BY sort_order ASC, nominal_amount ASC;
+		`,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get nominal tarif: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]model.TopupOptionItemModel, 0)
+	for rows.Next() {
+		var (
+			optionID      int64
+			nominalAmount int64
+			label         string
+		)
+
+		if err := rows.Scan(
+			&optionID,
+			&nominalAmount,
+			&label,
+		); err != nil {
+			return nil, fmt.Errorf("scan tarif: %w", err)
+		}
+
+		items = append(items, model.TopupOptionItemModel{
+			OptionID:      optionID,
+			NominalAmount: nominalAmount,
+			Label:         label,
+		})
+	}
+
+	result := &model.TopupOptionsResponseModel{
+		Nominal: &items,
+	}
+
+	return result, nil
+}

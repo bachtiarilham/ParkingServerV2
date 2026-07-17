@@ -20,13 +20,12 @@ func NewSubscriptionHandler(getSubscriptionUc *usecase.SubscriptionUseCase) *Sub
 // Endpoint: GET /api/v2/linespot/home
 func (h *SubscriptionHandler) Execute(w http.ResponseWriter, r *http.Request) {
 	userID, okUserId := middleware.UserIDFromContext(r.Context())
-	roleID, okRoleId := middleware.RoleIDFromContext(r.Context())
-	if !okUserId || !okRoleId {
+	if !okUserId {
 		response.Error(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
-	result, err := h.getSubscriptionUc.Execute(r.Context(), userID, roleID)
+	result, err := h.getSubscriptionUc.Execute(r.Context(), userID)
 	if err != nil {
 		response.Error(w, http.StatusInternalServerError, "gagal memuat dashboard")
 		return

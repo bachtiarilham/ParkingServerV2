@@ -9,4 +9,5 @@ import (
 type HelperRepository interface {
 	GetLokasi(ctx context.Context, userId int64) (*model.LokasiModel, error)
 	GetTarif(ctx context.Context, userId int64) (*model.TarifModel, error)
+	GetNominalTopUp(ctx context.Context) (*model.TopupOptionsResponseModel, error)
 }

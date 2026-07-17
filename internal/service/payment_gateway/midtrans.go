@@ -1,118 +1,283 @@
 package payment_gateway
 
-// import (
-// 	"context"
-// 	"fmt"
-// 	"time"
+import (
+	"bytes"
+	"context"
+	"crypto/sha512"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"time"
+)
 
-// 	// Import library Midtrans Go official
-// 	"github.com/veritrans/go-midtrans"
-// )
+type MidtransConfig struct {
+	ServerKey               string
+	ClientKey               string
+	Environment             string
+	BaseURL                 string
+	Acquirer                string
+	NotificationURL         string
+	OverrideNotificationURL string
+	HTTPClient              *http.Client
+}
 
-// type MidtransConfig struct {
-// 	ServerKey   string
-// 	ClientKey   string
-// 	Environment midtrans.EnvironmentType // Sandbox atau Production
-// }
+type MidtransService struct {
+	cfg    MidtransConfig
+	client *http.Client
+}
 
-// type MidtransService struct {
-// 	client *midtrans.Client
-// }
+func NewMidtransService(cfg MidtransConfig) (*MidtransService, error) {
+	if cfg.ServerKey == "" {
+		return nil, fmt.Errorf("midtrans server key is required")
+	}
+	if cfg.ClientKey == "" {
+		return nil, fmt.Errorf("midtrans client key is required")
+	}
 
-// func NewMidtransService(cfg MidtransConfig) (*MidtransService, error) {
-// 	client := new(midtrans.Client)
-// 	client.New(cfg.ServerKey, cfg.Environment)
+	if cfg.Environment == "" {
+		cfg.Environment = "sandbox"
+	}
+	if cfg.Acquirer == "" {
+		cfg.Acquirer = "gopay"
+	}
+	if cfg.BaseURL == "" {
+		cfg.BaseURL = defaultMidtransBaseURL(cfg.Environment)
+	}
 
-// 	return &MidtransService{
-// 		client: client,
-// 	}, nil
-// }
+	client := cfg.HTTPClient
+	if client == nil {
+		client = &http.Client{Timeout: 30 * time.Second}
+	}
 
-// func (s *MidtransService) RequestPayment(ctx context.Context, details PaymentDetails) (QRString string, VAString string, BankName string, ExpiredAt string, err error) {
-// 	req := &midtrans.ChargeReq{
-// 		PaymentType: midtrans.SourceQris,
-// 		TransactionDetails: midtrans.TransactionDetails{
-// 			OrderID:  details.OrderID,
-// 			GrossAmt: int64(details.Amount),
-// 		},
-// 		Items: &[]midtrans.ItemDetail{},
-// 		// Expiry: &midtrans.ExpiryDetails{
-// 		// 	StartTime: time.Now().Format("2006-01-02 15:04:05 -0700 MST"),
-// 		// 	Unit:      "minutes",
-// 		// 	Duration:  details.ExpiryDuration / 60, // Convert seconds to minutes
-// 		// },
-// 	}
+	return &MidtransService{
+		cfg:    cfg,
+		client: client,
+	}, nil
+}
 
-// 	for _, item := range details.ItemDetails {
-// 		*req.Items = append(*req.Items, midtrans.ItemDetail{
-// 			ID:    item.ID,
-// 			Name:  item.Name,
-// 			Price: item.Price,
-// 			Qty:   item.Quantity,
-// 		})
-// 	}
+func (s *MidtransService) RequestPayment(ctx context.Context, details PaymentDetails) (string, string, string, string, error) {
+	body := midtransChargeRequest{
+		PaymentType: "qris",
+		TransactionDetails: midtransTransactionDetails{
+			OrderID:     details.OrderID,
+			GrossAmount: details.Amount,
+		},
+		QRIS: midtransQrisRequest{
+			Acquirer: s.cfg.Acquirer,
+		},
+	}
 
-// 	if details.CustomerDetails != nil {
-// 		req.CustomerDetail = &midtrans.CustDetail{
-// 			FName: details.CustomerDetails.FName,
-// 			LName: details.CustomerDetails.LName,
-// 			Email: details.CustomerDetails.Email,
-// 			Phone: details.CustomerDetails.Phone,
-// 		}
-// 	}
+	if len(details.ItemDetails) > 0 {
+		body.ItemDetails = make([]midtransItemDetail, 0, len(details.ItemDetails))
+		for _, item := range details.ItemDetails {
+			body.ItemDetails = append(body.ItemDetails, midtransItemDetail{
+				ID:       item.ID,
+				Name:     item.Name,
+				Price:    item.Price,
+				Quantity: item.Quantity,
+			})
+		}
+	}
 
-// 	resp, err := s.client.ChargeTransaction(req)
-// 	if err != nil {
-// 		return "", "", "", "", fmt.Errorf("midtrans charge error: %w", err)
-// 	}
+	if details.CustomerDetails != nil {
+		body.CustomerDetails = &midtransCustomerDetails{
+			FirstName: details.CustomerDetails.FName,
+			LastName:  details.CustomerDetails.LName,
+			Email:     details.CustomerDetails.Email,
+			Phone:     details.CustomerDetails.Phone,
+		}
+	}
 
-// 	// Ambil detail dari response
-// 	qrString := ""
-// 	vaString := ""
-// 	bankName := ""
-// 	expiredAt := ""
+	payload, err := json.Marshal(body)
+	if err != nil {
+		return "", "", "", "", fmt.Errorf("marshal midtrans charge request: %w", err)
+	}
 
-// 	if resp.PaymentType == "qris" {
-// 		qrString = resp.Actions[0].URL // Atau QRString dari response jika tersedia
-// 		// Midtrans biasanya tidak langsung memberikan QR string, tapi URL untuk generate QR
-// 		// Kamu perlu ambil dari Actions atau Snap Token
-// 		// Misalnya, jika Actions berisi URL untuk generate QR:
-// 		// qrString = resp.Actions[0].URL
-// 		// Untuk demo, kita asumsikan QRIS string langsung ada
-// 		qrString = resp.QRString // Ganti dengan cara yang benar dari library Midtrans
-// 	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.cfg.BaseURL+"/v2/charge", bytes.NewReader(payload))
+	if err != nil {
+		return "", "", "", "", fmt.Errorf("create midtrans charge request: %w", err)
+	}
 
-// 	// Midtrans QRIS tidak memiliki bank name
-// 	// Jika VA, maka VAString dan BankName akan diisi
-// 	if resp.PaymentType == "bank_transfer" {
-// 		vaString = resp.VANumbers[0].VANumber
-// 		bankName = resp.VANumbers[0].Bank
-// 	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", basicAuthHeader(s.cfg.ServerKey))
+	if s.cfg.OverrideNotificationURL != "" {
+		req.Header.Set("X-Override-Notification", s.cfg.OverrideNotificationURL)
+	}
+	if s.cfg.NotificationURL != "" {
+		req.Header.Set("X-Append-Notification", s.cfg.NotificationURL)
+	}
 
-// 	// Ambil expiry time jika tersedia
-// 	if resp.Expiry != nil {
-// 		expiredAt = resp.Expiry.DateTime
-// 	} else {
-// 		// Jika tidak ada expiry di response, buat sendiri berdasarkan duration
-// 		expTime := time.Now().Add(time.Duration(details.ExpiryDuration) * time.Second)
-// 		expiredAt = expTime.Format("2006-01-02T15:04:05Z07:00")
-// 	}
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return "", "", "", "", fmt.Errorf("midtrans charge request: %w", err)
+	}
+	defer resp.Body.Close()
 
-// 	return qrString, vaString, bankName, expiredAt, nil
-// }
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", "", "", "", fmt.Errorf("read midtrans charge response: %w", err)
+	}
 
-// func (s *MidtransService) VerifyPayment(ctx context.Context, orderID string) (Status string, PaidAt *string, err error) {
-// 	// Gunakan API Get Status dari Midtrans
-// 	statusResp, err := s.client.CheckTransaction(orderID)
-// 	if err != nil {
-// 		return "", nil, fmt.Errorf("midtrans check transaction error: %w", err)
-// 	}
+	var chargeResp midtransChargeResponse
+	if err := json.Unmarshal(respBody, &chargeResp); err != nil {
+		return "", "", "", "", fmt.Errorf("unmarshal midtrans charge response: %w", err)
+	}
 
-// 	status := statusResp.TransactionStatus
-// 	var paidAt *string
-// 	if statusResp.SettlementTime != "" {
-// 		paidAt = &statusResp.SettlementTime // Format ISO8601
-// 	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		if chargeResp.StatusMessage == "" {
+			chargeResp.StatusMessage = resp.Status
+		}
+		return "", "", "", "", fmt.Errorf("midtrans charge failed: %s", chargeResp.StatusMessage)
+	}
 
-// 	return status, paidAt, nil
-// }
+	qrString := chargeResp.QRString
+	if qrString == "" {
+		for _, action := range chargeResp.Actions {
+			if strings.Contains(strings.ToLower(action.Name), "qr-code") && action.URL != "" {
+				qrString = action.URL
+				break
+			}
+		}
+	}
+
+	expiredAt := ""
+	if chargeResp.ExpiryTime != "" {
+		expiredAt = chargeResp.ExpiryTime
+	}
+
+	return qrString, "", "", expiredAt, nil
+}
+
+func (s *MidtransService) VerifyPayment(ctx context.Context, orderID string) (string, *string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.cfg.BaseURL+"/v2/"+orderID+"/status", nil)
+	if err != nil {
+		return "", nil, fmt.Errorf("create midtrans status request: %w", err)
+	}
+
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", basicAuthHeader(s.cfg.ServerKey))
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return "", nil, fmt.Errorf("midtrans status request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", nil, fmt.Errorf("read midtrans status response: %w", err)
+	}
+
+	var statusResp midtransStatusResponse
+	if err := json.Unmarshal(respBody, &statusResp); err != nil {
+		return "", nil, fmt.Errorf("unmarshal midtrans status response: %w", err)
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		if statusResp.StatusMessage == "" {
+			statusResp.StatusMessage = resp.Status
+		}
+		return "", nil, fmt.Errorf("midtrans status failed: %s", statusResp.StatusMessage)
+	}
+
+	paidAt := statusResp.SettlementTime
+	if paidAt == "" && (statusResp.TransactionStatus == "capture" || statusResp.TransactionStatus == "settlement") {
+		paidAt = statusResp.TransactionTime
+	}
+
+	if statusResp.TransactionStatus == "" {
+		return "", nil, nil
+	}
+
+	if paidAt == "" {
+		return statusResp.TransactionStatus, nil, nil
+	}
+
+	return statusResp.TransactionStatus, &paidAt, nil
+}
+
+func (s *MidtransService) VerifySignature(orderID, statusCode, grossAmount, signature string) bool {
+	sum := sha512.Sum512([]byte(orderID + statusCode + grossAmount + s.cfg.ServerKey))
+	return fmt.Sprintf("%x", sum) == strings.ToLower(signature)
+}
+
+func defaultMidtransBaseURL(environment string) string {
+	if strings.EqualFold(environment, "production") {
+		return "https://api.midtrans.com"
+	}
+	return "https://api.sandbox.midtrans.com"
+}
+
+func basicAuthHeader(serverKey string) string {
+	return "Basic " + base64.StdEncoding.EncodeToString([]byte(serverKey+":"))
+}
+
+type midtransChargeRequest struct {
+	PaymentType        string                     `json:"payment_type"`
+	TransactionDetails midtransTransactionDetails `json:"transaction_details"`
+	ItemDetails        []midtransItemDetail       `json:"item_details,omitempty"`
+	CustomerDetails    *midtransCustomerDetails   `json:"customer_details,omitempty"`
+	QRIS               midtransQrisRequest        `json:"qris"`
+}
+
+type midtransTransactionDetails struct {
+	OrderID     string `json:"order_id"`
+	GrossAmount int64  `json:"gross_amount"`
+}
+
+type midtransItemDetail struct {
+	ID       string `json:"id,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Price    int64  `json:"price,omitempty"`
+	Quantity int32  `json:"quantity,omitempty"`
+}
+
+type midtransCustomerDetails struct {
+	FirstName string `json:"first_name,omitempty"`
+	LastName  string `json:"last_name,omitempty"`
+	Email     string `json:"email,omitempty"`
+	Phone     string `json:"phone,omitempty"`
+}
+
+type midtransQrisRequest struct {
+	Acquirer string `json:"acquirer"`
+}
+
+type midtransChargeResponse struct {
+	StatusCode        string           `json:"status_code"`
+	StatusMessage     string           `json:"status_message"`
+	TransactionID     string           `json:"transaction_id"`
+	OrderID           string           `json:"order_id"`
+	GrossAmount       string           `json:"gross_amount"`
+	TransactionStatus string           `json:"transaction_status"`
+	PaymentType       string           `json:"payment_type"`
+	TransactionTime   string           `json:"transaction_time"`
+	FraudStatus       string           `json:"fraud_status"`
+	Acquirer          string           `json:"acquirer"`
+	QRString          string           `json:"qr_string"`
+	ExpiryTime        string           `json:"expiry_time"`
+	Actions           []midtransAction `json:"actions"`
+}
+
+type midtransAction struct {
+	Name   string `json:"name"`
+	Method string `json:"method"`
+	URL    string `json:"url"`
+}
+
+type midtransStatusResponse struct {
+	StatusCode        string `json:"status_code"`
+	StatusMessage     string `json:"status_message"`
+	TransactionID     string `json:"transaction_id"`
+	OrderID           string `json:"order_id"`
+	GrossAmount       string `json:"gross_amount"`
+	TransactionStatus string `json:"transaction_status"`
+	FraudStatus       string `json:"fraud_status"`
+	PaymentType       string `json:"payment_type"`
+	TransactionTime   string `json:"transaction_time"`
+	SettlementTime    string `json:"settlement_time"`
+}
