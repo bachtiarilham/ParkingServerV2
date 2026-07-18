@@ -8,8 +8,13 @@ import (
 	"modulegue/config"
 	"modulegue/core/queue"
 	"modulegue/core/worker"
+
+	//api
 	mobileapi "modulegue/internal/data/mobile/remote/api"
-	authrepo "modulegue/internal/data/mobile/repository_impl/auth"
+	sharedapi "modulegue/internal/data/shared/remote/api"
+	webapi "modulegue/internal/data/website/remote/api"
+
+	//repo
 	helperrepo "modulegue/internal/data/mobile/repository_impl/helper"
 	homerepo "modulegue/internal/data/mobile/repository_impl/home"
 	laporanrepo "modulegue/internal/data/mobile/repository_impl/laporan"
@@ -18,9 +23,11 @@ import (
 	riwayatrepo "modulegue/internal/data/mobile/repository_impl/riwayat"
 	subscriptionrepo "modulegue/internal/data/mobile/repository_impl/subcription"
 	topuprepo "modulegue/internal/data/mobile/repository_impl/topup"
+	authrepo "modulegue/internal/data/shared/repository_impl/auth"
+	webloginrepo "modulegue/internal/data/website/repository_impl/home"
+
 	webdelivery "modulegue/internal/delivery/web"
-	authmodel "modulegue/internal/domain/mobile/model/auth"
-	authuc "modulegue/internal/domain/mobile/usecase/auth"
+	//usecase
 	helperuc "modulegue/internal/domain/mobile/usecase/helper"
 	homeuc "modulegue/internal/domain/mobile/usecase/home"
 	laporanuc "modulegue/internal/domain/mobile/usecase/laporan"
@@ -29,6 +36,9 @@ import (
 	riwayatuc "modulegue/internal/domain/mobile/usecase/riwayat"
 	subscriptionuc "modulegue/internal/domain/mobile/usecase/subscription"
 	topupuc "modulegue/internal/domain/mobile/usecase/topup"
+	authmodel "modulegue/internal/domain/shared/model/auth"
+	authuc "modulegue/internal/domain/shared/usecase/auth"
+	webloginuc "modulegue/internal/domain/web/usecase/login"
 	"modulegue/internal/service/payment_gateway"
 )
 
@@ -55,6 +65,9 @@ func NewRouter(
 	statusPaymentRepository := paymentrepo.NewStatusPaymentRepositoryImpl(db)
 	helperRepository := helperrepo.NewHelperRepositoryImpl(db)
 	topUpRepository := topuprepo.NewTopUpRepositoryImpl(db)
+
+	loginWebRepo := webloginrepo.NewHomeRepositoryImpl(db)
+
 	var midtransService *payment_gateway.MidtransService
 	if cfg.MidtransServerKey != "" && cfg.MidtransClientKey != "" {
 		service, err := payment_gateway.NewMidtransService(payment_gateway.MidtransConfig{
@@ -69,6 +82,7 @@ func NewRouter(
 		}
 	}
 
+	//uc shared
 	registerUC := authuc.NewRegisterUseCase(authRepository)
 	loginUC := authuc.NewLoginUseCase(
 		authRepository,
@@ -87,6 +101,7 @@ func NewRouter(
 		refreshTTL,
 	)
 	changePasswordUC := authuc.NewChangePasswordUseCase(authRepository, sessionRepository)
+	//uc mobile
 	homeUC := homeuc.NewGetHomeUseCase(homeRepository)
 	laporanUC := laporanuc.NewGetLaporanUseCase(laporanRepository)
 	riwayatUC := riwayatuc.NewGetRiwayatUseCase(riwayatRepository)
@@ -101,13 +116,19 @@ func NewRouter(
 	GetNominalTopUpUc := helperuc.NewNominalTopUpUseCase(helperRepository)
 	getStatusTopUpUc := topupuc.NewGetTopUpStatusUseCase(topUpRepository)
 
+	//uc website
+	webLoginUC := webloginuc.NewLoginUseCase(
+		loginWebRepo,
+		sessionRepository,
+		authmodel.SessionModel{},
+		cfg.JWTSecret,
+		accessTTL,
+		refreshTTL,
+	)
+
 	mobileapi.RegisterRoutes(
 		mux,
-		loginUC,
-		registerUC,
-		logoutUC,
-		refreshUC,
-		changePasswordUC,
+
 		homeUC,
 		laporanUC,
 		riwayatUC,
@@ -122,6 +143,25 @@ func NewRouter(
 		getLokasiUC,
 		getTarifUC,
 		GetNominalTopUpUc,
+		queue,
+		logger,
+	)
+
+	sharedapi.RegisterRoutes(
+		mux,
+		loginUC,
+		registerUC,
+		logoutUC,
+		refreshUC,
+		changePasswordUC,
+		queue,
+		logger,
+	)
+
+	webapi.RegisterRoutes(
+		mux,
+		loginUC,
+		webLoginUC,
 		queue,
 		logger,
 	)

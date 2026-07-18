@@ -3,16 +3,17 @@ package api
 import (
 	"log"
 	"net/http"
-	"time"
+
+	// "time"
 
 	"modulegue/config"
 
 	"modulegue/core/queue"
 	middleware "modulegue/internal/middleware"
 
-	//auth
-	authUc "modulegue/internal/domain/mobile/usecase/auth"
-	authHandler "modulegue/internal/handler/mobile/auth"
+	// //auth
+	// authUc "modulegue/internal/domain/mobile/usecase/auth"
+	// authHandler "modulegue/internal/handler/mobile/auth"
 
 	//home
 	homeUc "modulegue/internal/domain/mobile/usecase/home"
@@ -57,11 +58,11 @@ import (
 func RegisterRoutes(
 	mux *http.ServeMux,
 	//auth
-	loginUc *authUc.LoginUseCase,
-	registerUc *authUc.RegisterUseCase,
-	logoutUc *authUc.LogoutUseCase,
-	refreshUc *authUc.RefreshTokenUseCase,
-	changePasswordUc *authUc.ChangePasswordUseCase,
+	// loginUc *authUc.LoginUseCase,
+	// registerUc *authUc.RegisterUseCase,
+	// logoutUc *authUc.LogoutUseCase,
+	// refreshUc *authUc.RefreshTokenUseCase,
+	// changePasswordUc *authUc.ChangePasswordUseCase,
 	//home
 	homeUc *homeUc.GetHomeUseCase,
 	//laporan
@@ -93,15 +94,15 @@ func RegisterRoutes(
 	logger *log.Logger,
 ) {
 	//core
-	authLimiter := middleware.NewRateLimiter(10, time.Minute, 5)
+	// authLimiter := middleware.NewRateLimiter(10, time.Minute, 5)
 
 	// Handler
 	//auth
-	loginHandler := authHandler.NewLoginHandler(loginUc)
-	registerHandler := authHandler.NewRegisterHandler(registerUc)
-	logoutHandler := authHandler.NewLogoutHandler(logoutUc)
-	refreshHandler := authHandler.NewRefreshTokenHandler(refreshUc)
-	changePasswordHandler := authHandler.NewChangePasswordHandler(changePasswordUc)
+	// loginHandler := authHandler.NewLoginHandler(loginUc)
+	// registerHandler := authHandler.NewRegisterHandler(registerUc)
+	// logoutHandler := authHandler.NewLogoutHandler(logoutUc)
+	// refreshHandler := authHandler.NewRefreshTokenHandler(refreshUc)
+	// changePasswordHandler := authHandler.NewChangePasswordHandler(changePasswordUc)
 	//home
 	homeHandler := homeHandler.NewHomeHandler(homeUc)
 	//riwayat
@@ -131,8 +132,8 @@ func RegisterRoutes(
 
 	//OtentikasiHandler
 	//auth
-	protectedLogoutHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(logoutHandler.Logout))                         // jika logout juga butuh otentikasi
-	protectedChangePasswordHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(changePasswordHandler.ChangePassword)) // Ganti cfg.JWTSecret dengan cara kamu mengakses secret
+	// protectedLogoutHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(logoutHandler.Logout))                         // jika logout juga butuh otentikasi
+	// protectedChangePasswordHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(changePasswordHandler.ChangePassword)) // Ganti cfg.JWTSecret dengan cara kamu mengakses secret
 	//home
 	protectedHomeHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(homeHandler.GetDashboard))
 	//riwayat
@@ -157,12 +158,12 @@ func RegisterRoutes(
 
 	//Endpoint
 	//auth
-	mux.HandleFunc("POST /api/v2/linespot/auth/register", registerHandler.Register)
-	mux.Handle("POST /api/v2/linespot/auth/login", authLimiter.AllowLogin(http.HandlerFunc(loginHandler.Login)))
-	mux.Handle("POST /api/v2/linespot/auth/refreshToken", authLimiter.AllowRefresh(http.HandlerFunc(refreshHandler.Execute)))
-	mux.Handle("POST /api/v2/linespot/auth/logout", protectedLogoutHandler)
-	// mux.Handle("GET /api/v2/linespot/users/me", protectedProfileHandler)
-	mux.Handle("POST /api/v2/linespot/auth/change-password", protectedChangePasswordHandler)
+	// mux.HandleFunc("POST /api/v2/linespot/auth/register", registerHandler.Register)
+	// mux.Handle("POST /api/v2/linespot/auth/login", authLimiter.AllowLogin(http.HandlerFunc(loginHandler.Login)))
+	// mux.Handle("POST /api/v2/linespot/auth/refreshToken", authLimiter.AllowRefresh(http.HandlerFunc(refreshHandler.Execute)))
+	// mux.Handle("POST /api/v2/linespot/auth/logout", protectedLogoutHandler)
+	// // mux.Handle("GET /api/v2/linespot/users/me", protectedProfileHandler)
+	// mux.Handle("POST /api/v2/linespot/auth/change-password", protectedChangePasswordHandler)
 
 	//home
 	mux.Handle("GET /api/v2/linespot/customer_home", protectedHomeHandler)
@@ -186,7 +187,7 @@ func RegisterRoutes(
 	//helper
 	mux.Handle("GET /api/v2/linespot/get_lokasi", protectedGetLokasiHandler)
 	mux.Handle("GET /api/v2/linespot/get_tarif", protectedGetTarifHandler)
-	mux.Handle("GET /api/v2/linespot/get_nominal_topup", protectedGetNominalTopUpHandler)
+	mux.Handle("GET /api/v2/linespot/get_topup", protectedGetNominalTopUpHandler)
 
 	//route dengan otentikasi (middleware JWT)
 	// mux.Handle("GET /api/v2/linespot/qr/generate", protectedQrGenerator)

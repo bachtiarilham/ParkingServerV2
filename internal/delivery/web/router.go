@@ -8,7 +8,7 @@ import (
 
 	"modulegue/config"
 	"modulegue/core/queue"
-	authrepo "modulegue/internal/data/mobile/repository_impl/auth"
+	authrepo "modulegue/internal/data/shared/repository_impl/auth"
 	webhandler "modulegue/internal/delivery/web/handler"
 	"modulegue/internal/middleware"
 	webrepo "modulegue/internal/repository/web"

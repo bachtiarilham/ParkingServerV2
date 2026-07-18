@@ -71,27 +71,6 @@ func ToTopupCreateResponseModel(src *dto.TopupCreateResponseDto) *model.TopupCre
 		CreatedAt:          src.CreatedAt,
 	}
 }
-
-// func ToTopupStatusRequestDto(src *model.TopupStatusRequestModel) *dto.TopupStatusRequestDto {
-// 	if src == nil {
-// 		return nil
-// 	}
-
-// 	return &dto.TopupStatusRequestDto{
-// 		TopupCode: src.TopupCode,
-// 	}
-// }
-
-// func ToTopupStatusRequestModel(src *dto.TopupStatusRequestDto) *model.TopupStatusRequestModel {
-// 	if src == nil {
-// 		return nil
-// 	}
-
-// 	return &model.TopupStatusRequestModel{
-// 		TopupCode: src.TopupCode,
-// 	}
-// }
-
 func ToTopupStatusResponseDto(src *model.TopupStatusResponseModel) *dto.TopupStatusResponseDto {
 	if src == nil {
 		return nil

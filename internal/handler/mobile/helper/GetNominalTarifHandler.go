@@ -34,7 +34,7 @@ func (h *GetNominalTopUpHandler) Execute(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	resp := mapper.ToTopupOptionsResponseDto(result)
+	resp := mapper.ToTopupResponseDto(result)
 	if resp == nil {
 		response.Error(w, http.StatusInternalServerError, "gagal memuat nominal top up")
 		return

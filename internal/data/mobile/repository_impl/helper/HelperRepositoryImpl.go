@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"modulegue/core/utils"
 	model "modulegue/internal/domain/mobile/model/helper"
 	"modulegue/internal/domain/mobile/repository"
 )
@@ -158,7 +159,7 @@ func (r *HelperRepositoryImpl) GetTarif(ctx context.Context, userId int64) (*mod
 	return result, nil
 }
 
-func (r *HelperRepositoryImpl) GetNominalTopUp(ctx context.Context) (*model.TopupOptionsResponseModel, error) {
+func (r *HelperRepositoryImpl) GetTopUp(ctx context.Context) (*model.TopupResponseModel, error) {
 	rows, err := r.db.QueryContext(
 		ctx,
 		`
@@ -176,12 +177,12 @@ func (r *HelperRepositoryImpl) GetNominalTopUp(ctx context.Context) (*model.Topu
 	}
 	defer rows.Close()
 
-	items := make([]model.TopupOptionItemModel, 0)
+	items := make([]model.NominalItemModel, 0)
 	for rows.Next() {
 		var (
 			optionID      int64
 			nominalAmount int64
-			label         string
+			label         sql.NullString
 		)
 
 		if err := rows.Scan(
@@ -192,15 +193,62 @@ func (r *HelperRepositoryImpl) GetNominalTopUp(ctx context.Context) (*model.Topu
 			return nil, fmt.Errorf("scan tarif: %w", err)
 		}
 
-		items = append(items, model.TopupOptionItemModel{
+		items = append(items, model.NominalItemModel{
 			OptionID:      optionID,
 			NominalAmount: nominalAmount,
-			Label:         label,
+			Label:         utils.NullStringValue(label),
 		})
 	}
 
-	result := &model.TopupOptionsResponseModel{
-		Nominal: &items,
+	rows1, err := r.db.QueryContext(
+		ctx,
+		`
+		SELECT
+			id AS paymentMethodId,
+			payment_method_code AS paymentMethodCode,
+			payment_method_name AS paymentMethodName,
+			logo_url AS logoUrl
+		FROM master_payment_method
+		WHERE is_active = 1 
+		AND payment_method_code NOT IN ('QRIS', 'CASH') -- Tambahkan baris ini
+		ORDER BY id ASC;
+		`,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("Get Metode pembayaran: %w", err)
+	}
+	defer rows1.Close()
+
+	items1 := make([]model.MetodeItemModel, 0)
+	for rows1.Next() {
+		var (
+			PaymentMethodId int64
+			NamaPayment     sql.NullString
+			CodePayment     sql.NullString
+			LogoPayment     sql.NullString
+		)
+
+		if err := rows1.Scan(
+			&PaymentMethodId,
+			&NamaPayment,
+			&CodePayment,
+			&LogoPayment,
+		); err != nil {
+			return nil, fmt.Errorf("scan metode pembayaran: %w", err)
+		}
+
+		items1 = append(items1, model.MetodeItemModel{
+			PaymentMethodId: PaymentMethodId,
+			NamaPayment:     utils.NullStringValue(NamaPayment),
+			CodePayment:     utils.NullStringValue(CodePayment),
+			LogoPayment:     utils.NullStringValue(LogoPayment),
+		})
+
+	}
+
+	result := &model.TopupResponseModel{
+		Nominal:     &items,
+		MetodeBayar: &items1,
 	}
 
 	return result, nil

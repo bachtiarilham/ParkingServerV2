@@ -439,6 +439,25 @@ func (r *TopUpRepositoryImpl) TopUpCallback(ctx context.Context, reqModel model.
 		return nil, fmt.Errorf("insert wallet history: %w", err)
 	}
 
+	if _, err := tx.ExecContext(
+		ctx,
+		`
+		UPDATE summary_user_home suh
+		JOIN wallet_account wa
+			ON wa.user_id = suh.user_id
+		JOIN master_wallet_type mwt
+			ON mwt.id = wa.wallet_type_id
+		SET
+			suh.saldo = wa.current_balance_amount,
+			suh.updated_at = NOW()
+		WHERE suh.user_id = ?
+		AND mwt.wallet_type_code = 'BALANCE';
+		`,
+		userID,
+	); err != nil {
+		return nil, fmt.Errorf("update summary user home: %w", err)
+	}
+
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("commit topup success callback: %w", err)
 	}

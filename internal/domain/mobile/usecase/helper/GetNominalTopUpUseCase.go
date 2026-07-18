@@ -17,6 +17,6 @@ func NewNominalTopUpUseCase(getNominalTopUpRepo repository.HelperRepository) *Ge
 	}
 }
 
-func (uc *GetNominalTopUpUseCase) Execute(ctx context.Context) (*model.TopupOptionsResponseModel, error) {
-	return uc.getNominalTopUpRepo.GetNominalTopUp(ctx)
+func (uc *GetNominalTopUpUseCase) Execute(ctx context.Context) (*model.TopupResponseModel, error) {
+	return uc.getNominalTopUpRepo.GetTopUp(ctx)
 }

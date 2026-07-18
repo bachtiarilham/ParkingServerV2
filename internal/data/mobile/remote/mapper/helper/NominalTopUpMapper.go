@@ -5,58 +5,98 @@ import (
 	model "modulegue/internal/domain/mobile/model/helper"
 )
 
-func ToTopupOptionsResponseDto(src *model.TopupOptionsResponseModel) *dto.TopupOptionsResponseDto {
+func ToTopupResponseDto(src *model.TopupResponseModel) *dto.TopupResponseDto {
 	if src == nil {
 		return nil
 	}
 
-	out := &dto.TopupOptionsResponseDto{}
+	out := &dto.TopupResponseDto{}
 	if src.Nominal == nil {
-		empty := []dto.TopupOptionItemDto{}
+		empty := []dto.NominalItemDto{}
 		out.Nominal = &empty
+	} else {
+		items := make([]dto.NominalItemDto, 0, len(*src.Nominal))
+		for _, item := range *src.Nominal {
+			items = append(items, ToNominalItemDto(item))
+		}
+		out.Nominal = &items
+	}
+
+	if src.MetodeBayar == nil {
+		empty := []dto.MetodeItemDto{}
+		out.MetodeBayar = &empty
 		return out
 	}
 
-	items := make([]dto.TopupOptionItemDto, 0, len(*src.Nominal))
-	for _, item := range *src.Nominal {
-		items = append(items, ToTopupOptionItemDto(item))
+	methods := make([]dto.MetodeItemDto, 0, len(*src.MetodeBayar))
+	for _, item := range *src.MetodeBayar {
+		methods = append(methods, ToMetodeItemDto(item))
 	}
-	out.Nominal = &items
+	out.MetodeBayar = &methods
 	return out
 }
 
-func ToTopupOptionItemDto(src model.TopupOptionItemModel) dto.TopupOptionItemDto {
-	return dto.TopupOptionItemDto{
+func ToTopupResponseModel(src *dto.TopupResponseDto) *model.TopupResponseModel {
+	if src == nil {
+		return nil
+	}
+
+	out := &model.TopupResponseModel{}
+	if src.Nominal == nil {
+		empty := []model.NominalItemModel{}
+		out.Nominal = &empty
+	} else {
+		items := make([]model.NominalItemModel, 0, len(*src.Nominal))
+		for _, item := range *src.Nominal {
+			items = append(items, ToNominalItemModel(item))
+		}
+		out.Nominal = &items
+	}
+
+	if src.MetodeBayar == nil {
+		empty := []model.MetodeItemModel{}
+		out.MetodeBayar = &empty
+		return out
+	}
+
+	methods := make([]model.MetodeItemModel, 0, len(*src.MetodeBayar))
+	for _, item := range *src.MetodeBayar {
+		methods = append(methods, ToMetodeItemModel(item))
+	}
+	out.MetodeBayar = &methods
+	return out
+}
+
+func ToNominalItemDto(src model.NominalItemModel) dto.NominalItemDto {
+	return dto.NominalItemDto{
 		OptionID:      src.OptionID,
 		NominalAmount: src.NominalAmount,
 		Label:         src.Label,
 	}
 }
 
-func ToTopupOptionsResponseModel(src *dto.TopupOptionsResponseDto) *model.TopupOptionsResponseModel {
-	if src == nil {
-		return nil
-	}
-
-	out := &model.TopupOptionsResponseModel{}
-	if src.Nominal == nil {
-		empty := []model.TopupOptionItemModel{}
-		out.Nominal = &empty
-		return out
-	}
-
-	items := make([]model.TopupOptionItemModel, 0, len(*src.Nominal))
-	for _, item := range *src.Nominal {
-		items = append(items, ToTopupOptionItemModel(item))
-	}
-	out.Nominal = &items
-	return out
-}
-
-func ToTopupOptionItemModel(src dto.TopupOptionItemDto) model.TopupOptionItemModel {
-	return model.TopupOptionItemModel{
+func ToNominalItemModel(src dto.NominalItemDto) model.NominalItemModel {
+	return model.NominalItemModel{
 		OptionID:      src.OptionID,
 		NominalAmount: src.NominalAmount,
 		Label:         src.Label,
+	}
+}
+
+func ToMetodeItemDto(src model.MetodeItemModel) dto.MetodeItemDto {
+	return dto.MetodeItemDto{
+		PaymentMethodId: src.PaymentMethodId,
+		NamaPayment:     src.NamaPayment,
+		CodePayment:     src.CodePayment,
+		LogoPayment:     src.LogoPayment,
+	}
+}
+
+func ToMetodeItemModel(src dto.MetodeItemDto) model.MetodeItemModel {
+	return model.MetodeItemModel{
+		PaymentMethodId: src.PaymentMethodId,
+		NamaPayment:     src.NamaPayment,
+		CodePayment:     src.CodePayment,
+		LogoPayment:     src.LogoPayment,
 	}
 }

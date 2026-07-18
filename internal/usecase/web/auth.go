@@ -10,8 +10,8 @@ import (
 	"modulegue/core/hash"
 	"modulegue/core/jwt"
 	"modulegue/internal/domain/dashboard"
-	authmodel "modulegue/internal/domain/mobile/model/auth"
-	mobilerepo "modulegue/internal/domain/mobile/repository"
+	authmodel "modulegue/internal/domain/shared/model/auth"
+	mobilerepo "modulegue/internal/domain/shared/repository"
 )
 
 var (
