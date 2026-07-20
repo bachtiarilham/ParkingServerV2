@@ -24,7 +24,12 @@ import (
 	subscriptionrepo "modulegue/internal/data/mobile/repository_impl/subcription"
 	topuprepo "modulegue/internal/data/mobile/repository_impl/topup"
 	authrepo "modulegue/internal/data/shared/repository_impl/auth"
+	webhelperrepo "modulegue/internal/data/website/repository_impl/helper"
 	webloginrepo "modulegue/internal/data/website/repository_impl/home"
+	webmonitoringrepo "modulegue/internal/data/website/repository_impl/monitoring"
+	webpetugasrepo "modulegue/internal/data/website/repository_impl/petugas"
+	websettingrepo "modulegue/internal/data/website/repository_impl/setting"
+	webtopuprepo "modulegue/internal/data/website/repository_impl/topup"
 
 	webdelivery "modulegue/internal/delivery/web"
 	//usecase
@@ -38,7 +43,12 @@ import (
 	topupuc "modulegue/internal/domain/mobile/usecase/topup"
 	authmodel "modulegue/internal/domain/shared/model/auth"
 	authuc "modulegue/internal/domain/shared/usecase/auth"
+	webhelperuc "modulegue/internal/domain/web/usecase/helper"
 	webloginuc "modulegue/internal/domain/web/usecase/login"
+	webmonitoringuc "modulegue/internal/domain/web/usecase/monitoring"
+	webpetugasuc "modulegue/internal/domain/web/usecase/petugas"
+	websettinguc "modulegue/internal/domain/web/usecase/setting"
+	webtopupuc "modulegue/internal/domain/web/usecase/topup"
 	"modulegue/internal/service/payment_gateway"
 )
 
@@ -67,6 +77,11 @@ func NewRouter(
 	topUpRepository := topuprepo.NewTopUpRepositoryImpl(db)
 
 	loginWebRepo := webloginrepo.NewHomeRepositoryImpl(db)
+	webHelperRepo := webhelperrepo.NewHelperRepositoryImpl(db)
+	webMonitoringRepo := webmonitoringrepo.NewMonitoringRepositoryImpl(db)
+	petugasWebRepo := webpetugasrepo.NewPetugasRepositoryImpl(db)
+	settingWebRepo := websettingrepo.NewSettingRepositoryImpl(db)
+	topupWebRepo := webtopuprepo.NewTopUpRepositoryImpl(db)
 
 	var midtransService *payment_gateway.MidtransService
 	if cfg.MidtransServerKey != "" && cfg.MidtransClientKey != "" {
@@ -125,6 +140,17 @@ func NewRouter(
 		accessTTL,
 		refreshTTL,
 	)
+	webGetLokasiUC := webhelperuc.NewGetLokasiUseCase(webHelperRepo)
+	webGetTarifUC := webhelperuc.NewGetTarifUseCase(webHelperRepo)
+	webMonitoringUC := webmonitoringuc.NewMonitoringUseCase(webMonitoringRepo)
+	webPetugasUC := webpetugasuc.NewPetugasUseCase(petugasWebRepo)
+	webAddParlokUC := websettinguc.NewAddParlokUseCase(settingWebRepo)
+	webRegisterJukirUC := websettinguc.NewRegisterJukirUseCase(settingWebRepo)
+	webSaveScheduleUC := websettinguc.NewSaveScheduleUseCase(settingWebRepo)
+	webSaveTarifUC := websettinguc.NewSaveTarifUseCase(settingWebRepo)
+	webShowSelectedJukirUC := websettinguc.NewShowSelectedJukirUseCase(settingWebRepo)
+	webUpdateProfileUC := websettinguc.NewUpdateProfileUseCase(settingWebRepo)
+	webTopUpUC := webtopupuc.NewTopUpUseCase(topupWebRepo)
 
 	mobileapi.RegisterRoutes(
 		mux,
@@ -162,8 +188,20 @@ func NewRouter(
 		mux,
 		loginUC,
 		webLoginUC,
+		webGetLokasiUC,
+		webGetTarifUC,
+		webMonitoringUC,
+		webPetugasUC,
+		webAddParlokUC,
+		webRegisterJukirUC,
+		webSaveScheduleUC,
+		webSaveTarifUC,
+		webShowSelectedJukirUC,
+		webUpdateProfileUC,
+		webTopUpUC,
 		queue,
 		logger,
+		cfg.JWTSecret,
 	)
 
 	webdelivery.RegisterRoutes(mux, cfg, db, queue, logger)

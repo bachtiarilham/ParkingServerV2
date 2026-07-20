@@ -6,5 +6,5 @@ import (
 )
 
 type TopUpRepository interface {
-	AddParlok(context.Context, model.TopUpRequestModel) error
+	TopUp(context.Context, model.TopUpRequestModel) (*model.TopUpResponseModel, error)
 }

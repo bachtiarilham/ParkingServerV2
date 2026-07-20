@@ -183,6 +183,7 @@ SELECT
     ua.detail_address AS alamat
 FROM user_identity ui
 LEFT JOIN user_address ua
+	
     ON ua.user_id = ui.id
 WHERE ui.id = ?
 LIMIT 1;

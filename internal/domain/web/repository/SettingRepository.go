@@ -11,4 +11,5 @@ type SettingRepository interface {
 	SaveSchedule(context.Context, model.SaveScheduleRequestModel) error
 	SaveTarif(context.Context, model.SaveTarifRequestModel) error
 	ShowSelectedJukir(context.Context, model.ShowSelectedJukirRequestModel) (*model.ShowSelectedJukirResponseModel, error)
+	UpdateProfil(context.Context, model.UpdateProfilRequestModel) error
 }
