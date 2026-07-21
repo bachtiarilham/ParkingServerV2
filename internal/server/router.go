@@ -120,6 +120,8 @@ func NewRouter(
 	homeUC := homeuc.NewGetHomeUseCase(homeRepository)
 	laporanUC := laporanuc.NewGetLaporanUseCase(laporanRepository)
 	riwayatUC := riwayatuc.NewGetRiwayatUseCase(riwayatRepository)
+	getParkirDetilUC := riwayatuc.NewGetParkirDetilUseCase(riwayatRepository)
+	getTransaksiDetilUC := riwayatuc.NewGetTransaksiDetilUseCase(riwayatRepository)
 	subscriptionUC := subscriptionuc.NewSubscriptionUseCase(subscriptionRepository)
 	postParkingUC := parkinguc.NewPostParkingUseCase(parkingRepository)
 	topupUC := topupuc.NewTopUpUseCase(topUpRepository, cfg.AdminFeeTopUp)
@@ -158,6 +160,8 @@ func NewRouter(
 		homeUC,
 		laporanUC,
 		riwayatUC,
+		getParkirDetilUC,
+		getTransaksiDetilUC,
 		subscriptionUC,
 		postParkingUC,
 		postPaymentParkingUC,

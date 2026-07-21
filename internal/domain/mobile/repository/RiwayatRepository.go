@@ -8,4 +8,6 @@ import (
 
 type RiwayatRepository interface {
 	GetRiwayat(ctx context.Context, req model.RiwayatRequestModel) (*model.RiwayatModel, error)
+	GetTransaksiDetil(ctx context.Context, req model.DetilTransaksiRequestModel) (*model.DetilTransaksiModel, error)
+	GetParkirDetil(ctx context.Context, req model.DetilParkirRequestModel) (*model.DetilParkirModel, error)
 }

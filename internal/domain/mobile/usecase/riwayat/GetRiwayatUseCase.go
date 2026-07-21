@@ -28,12 +28,12 @@ func (uc *GetRiwayatUseCase) Execute(ctx context.Context, reqModel model.Riwayat
 
 	if result == nil {
 		return &model.RiwayatModel{
-			Sections: []model.RiwayatSectionModel{},
+			ParkirSections: []model.RiwayatSectionModel{},
 		}, nil
 	}
 
-	if result.Sections == nil {
-		result.Sections = []model.RiwayatSectionModel{}
+	if result.ParkirSections == nil {
+		result.ParkirSections = []model.RiwayatSectionModel{}
 	}
 
 	return result, nil

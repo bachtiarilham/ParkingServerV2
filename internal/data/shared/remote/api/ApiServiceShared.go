@@ -52,4 +52,6 @@ func RegisterRoutes(
 	mux.Handle("POST /api/v2/linespot/auth/logout", protectedLogoutHandler)
 	// mux.Handle("GET /api/v2/linespot/users/me", protectedProfileHandler)
 	mux.Handle("POST /api/v2/linespot/auth/change-password", protectedChangePasswordHandler)
+	mux.Handle("POST /api/v2/linespot/auth/lupa-password", authLimiter.AllowLogin(http.HandlerFunc(changePasswordHandler.ChangePassword)))
+
 }

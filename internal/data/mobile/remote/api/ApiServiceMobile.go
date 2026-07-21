@@ -69,6 +69,8 @@ func RegisterRoutes(
 	laporanUc *laporanUc.GetLaporanUseCase,
 	//riwayat
 	riwayatUc *riwayatUc.GetRiwayatUseCase,
+	getParkirDetilUc *riwayatUc.GetParkirDetilUseCase,
+	getTransaksiDetilUc *riwayatUc.GetTransaksiDetilUseCase,
 	//subscription
 	subscriptionUc *subscriptionUc.SubscriptionUseCase,
 	//payment
@@ -106,7 +108,9 @@ func RegisterRoutes(
 	//home
 	homeHandler := homeHandler.NewHomeHandler(homeUc)
 	//riwayat
-	riwayatHandler := riwayatHandler.NewRiwayatHandler(riwayatUc)
+	riwayatListHandler := riwayatHandler.NewRiwayatHandler(riwayatUc)
+	parkirDetilHandler := riwayatHandler.NewParkirDetilHandler(getParkirDetilUc)
+	transaksiDetilHandler := riwayatHandler.NewTransaksiDetilHandler(getTransaksiDetilUc)
 	//laporan
 	laporanHandler := laporanHandler.NewLaporanHandler(laporanUc)
 	//subscription
@@ -137,12 +141,14 @@ func RegisterRoutes(
 	//home
 	protectedHomeHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(homeHandler.GetDashboard))
 	//riwayat
-	protectedRiwayatHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(riwayatHandler.Execute))
+	protectedRiwayatHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(riwayatListHandler.Execute))
+	protectedParkirDetilHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(parkirDetilHandler.Execute))
+	protectedTransaksiDetilHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(transaksiDetilHandler.Execute))
 	//laporan
 	protectedLaporanHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(laporanHandler.Execute))
 	//subscription
 	protectedSubscriptionHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(subscriptionHandler.Execute))
-	//payment
+	//parking
 	protectedPostParkingHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(postParkingHandler.Execute))
 	protectedPostPaymentParkingHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(postPaymentParkingHandler.Execute))
 	protectedGetPembayaranStatusHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(getPembayaranStatusHandler.Execute))
@@ -172,6 +178,8 @@ func RegisterRoutes(
 	mux.Handle("POST /api/v2/linespot/laporan", protectedLaporanHandler)
 	//riwayat
 	mux.Handle("POST /api/v2/linespot/riwayat", protectedRiwayatHandler)
+	mux.Handle("GET /api/v2/linespot/riwayat/parkir/{transaction_code}", protectedParkirDetilHandler)
+	mux.Handle("GET /api/v2/linespot/riwayat/transaksi/{topup_code}", protectedTransaksiDetilHandler)
 	//subscription
 	mux.Handle("GET /api/v2/linespot/subscribe", protectedSubscriptionHandler)
 	//parking

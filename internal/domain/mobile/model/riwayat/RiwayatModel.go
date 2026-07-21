@@ -3,7 +3,8 @@ package riwayat
 // RiwayatModel adalah wrapper data riwayat transaksi.
 // Detail item dan section disimpan di file terpisah, tapi tetap dalam package yang sama.
 type RiwayatModel struct {
-	Sections []RiwayatSectionModel `json:"sections,omitempty"`
+	ParkirSections []RiwayatSectionModel `json:"sections,omitempty"`
+	TopUpSections  []TopUpSectionModel   `json:"topup_sections,omitempty"`
 }
 
 type RiwayatSectionModel struct {
@@ -18,4 +19,18 @@ type RiwayatItemModel struct {
 	Time        string `json:"time,omitempty"`
 	Amount      int64  `json:"amount,omitempty"`
 	IsEntry     bool   `json:"is_entry,omitempty"`
+}
+
+type TopUpSectionModel struct {
+	Date  string           `json:"date,omitempty"`
+	Items []TopUpItemModel `json:"items,omitempty"`
+}
+
+type TopUpItemModel struct {
+	Code              string `json:"code,omitempty"`
+	PaymentMethodName string `json:"payment_name,omitempty"`
+	TransactionStatus string `json:"transaction_status,omitempty"`
+	ProviderName      string `json:"provider_name,omitempty"`
+	Time              string `json:"time,omitempty"`
+	Amount            int64  `json:"amount,omitempty"`
 }

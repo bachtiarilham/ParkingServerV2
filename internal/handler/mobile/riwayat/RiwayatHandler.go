@@ -3,7 +3,6 @@ package riwayat
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"modulegue/core/response"
 	"modulegue/core/utils"
@@ -49,12 +48,9 @@ func (h *RiwayatHandler) Execute(w http.ResponseWriter, r *http.Request) {
 	}
 
 	input := model.RiwayatRequestModel{
-		UserID:      userID,
-		StartDate:   startDate,
-		EndDate:     endDate,
-		PaymentCode: strings.TrimSpace(req.PaymentCode),
-		VehicleCode: strings.TrimSpace(req.VehicleCode),
-		LokasiCode:  strings.TrimSpace(req.LokasiCode),
+		UserID:    userID,
+		StartDate: startDate,
+		EndDate:   endDate,
 	}
 
 	result, err := h.getRiwayatUc.Execute(r.Context(), input)
