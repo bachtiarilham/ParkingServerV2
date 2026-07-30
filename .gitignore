@@ -11,3 +11,5 @@
 
 # Folder vendor (tidak perlu diupload karena ada go.mod)
 vendor/
+
+config/config.go
