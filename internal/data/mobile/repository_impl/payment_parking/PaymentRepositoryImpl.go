@@ -19,59 +19,37 @@ func NewPaymentRepositoryImpl(db *sql.DB) repository.PaymentRepository {
 	return &PaymentRepositoryImpl{db: db}
 }
 
-func (r *PaymentRepositoryImpl) PostPaymentParking(ctx context.Context, req model.PostPaymentParkingRequestModel) (*model.PaymentBusinessModel, error) {
+func (r *PaymentRepositoryImpl) PayParking(ctx context.Context, req model.PostPaymentParkingRequestModel) (*model.PaymentBusinessModel, error) {
 	query := `
 	SELECT
 		ps.id AS sessionId,
 		ps.session_code AS sessionCode,
 		ps.transaction_code AS transactionCode,
-
 		ps.plate_number AS plateNumber,
-
 		mvt.id AS vehicleTypeId,
 		mvt.vehicle_type_code AS vehicleTypeCode,
 		mvt.vehicle_type_name AS vehicleTypeName,
-
 		lp.id AS locationId,
 		lp.location_name AS locationName,
 		lp.address AS locationAddress,
-
 		la.id AS areaId,
 		la.area_name AS areaName,
-
 		ps.amount AS amount,
 		ps.qr_expired_at AS qrExpiredAt,
-
 		pt.payment_code AS paymentCode,
-
 		mps.status_code AS parkingStatusCode,
 		mpy.status_code AS paymentStatusCode
-
 	FROM parking_session ps
-
-	JOIN master_vehicle_type mvt
-		ON mvt.id = ps.vehicle_type_id
-
-	JOIN location_parking lp
-		ON lp.id = ps.location_id
-
-	LEFT JOIN location_area la
-		ON la.id = ps.area_id
-
-	JOIN payment_transaction pt
-		ON pt.parking_session_id = ps.id
-
-	JOIN master_parking_status mps
-		ON mps.id = ps.parking_status_id
-
-	JOIN master_payment_status mpy
-		ON mpy.id = ps.payment_status_id
-
+	JOIN master_vehicle_type mvt ON mvt.id = ps.vehicle_type_id
+	JOIN location_parking lp ON lp.id = ps.location_id
+	LEFT JOIN location_area la ON la.id = ps.area_id
+	JOIN payment_transaction pt ON pt.parking_session_id = ps.id
+	JOIN master_parking_status mps ON mps.id = ps.parking_status_id
+	JOIN master_payment_status mpy ON mpy.id = ps.payment_status_id
 	WHERE ps.session_code = ?
 	AND mps.status_code = 'WAITING_PAYMENT'
 	AND mpy.status_code = 'PENDING'
 	AND ps.qr_expired_at > NOW()
-
 	LIMIT 1;
 	`
 
@@ -155,13 +133,8 @@ func (r *PaymentRepositoryImpl) isPaymentAlreadyCompleted(ctx context.Context, s
 		COALESCE(mpy.status_code, '') AS paymentStatusCode,
 		ps.paid_at
 	FROM parking_session ps
-
-	JOIN master_parking_status mps
-		ON mps.id = ps.parking_status_id
-
-	JOIN master_payment_status mpy
-		ON mpy.id = ps.payment_status_id
-
+	JOIN master_parking_status mps ON mps.id = ps.parking_status_id
+	JOIN master_payment_status mpy ON mpy.id = ps.payment_status_id
 	WHERE ps.session_code = ?
 	LIMIT 1;
 	`
@@ -186,10 +159,10 @@ func (r *PaymentRepositoryImpl) isPaymentAlreadyCompleted(ctx context.Context, s
 	return false, nil
 }
 
-func (r *PaymentRepositoryImpl) BindCustomerToSessionAndTransaction(ctx context.Context, req model.PaymentBusinessModel) error {
+func (r *PaymentRepositoryImpl) ProcessPaymentSuccess(ctx context.Context, req model.PaymentBusinessModel) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("begin bind customer tx: %w", err)
+		return fmt.Errorf("begin success payment transaction: %w", err)
 	}
 	defer func() {
 		if err != nil {
@@ -197,411 +170,188 @@ func (r *PaymentRepositoryImpl) BindCustomerToSessionAndTransaction(ctx context.
 		}
 	}()
 
-	updateSessionQuery := `
+	// 1. Bind Customer To Session
+	updateSessionCustomer := `
 	UPDATE parking_session
-	SET
-		customer_user_id = COALESCE(customer_user_id, ?),
-		updated_at = NOW()
-	WHERE id = ?
-	AND (
-			customer_user_id IS NULL
-			OR customer_user_id = ?
-	);
+	SET customer_user_id = COALESCE(customer_user_id, ?), updated_at = NOW()
+	WHERE id = ? AND (customer_user_id IS NULL OR customer_user_id = ?);
 	`
-
-	if _, err = tx.ExecContext(ctx, updateSessionQuery, req.CustomerUserId, req.SessionId, req.CustomerUserId); err != nil {
-		return fmt.Errorf("bind customer parking session: %w", err)
+	if _, err = tx.ExecContext(ctx, updateSessionCustomer, req.CustomerUserId, req.SessionId, req.CustomerUserId); err != nil {
+		return fmt.Errorf("bind customer session: %w", err)
 	}
 
-	updatePaymentQuery := `
+	// 2. Bind Customer To Transaction
+	updateTxCustomer := `
 	UPDATE payment_transaction
-	SET
-		user_id = COALESCE(user_id, ?),
-		updated_at = NOW()
-	WHERE parking_session_id = ?
-	AND (
-			user_id IS NULL
-			OR user_id = ?
-	);
+	SET user_id = COALESCE(user_id, ?), updated_at = NOW()
+	WHERE parking_session_id = ? AND (user_id IS NULL OR user_id = ?);
 	`
+	if _, err = tx.ExecContext(ctx, updateTxCustomer, req.CustomerUserId, req.SessionId, req.CustomerUserId); err != nil {
+		return fmt.Errorf("bind customer tx: %w", err)
+	}
 
-	if _, err = tx.ExecContext(ctx, updatePaymentQuery, req.CustomerUserId, req.SessionId, req.CustomerUserId); err != nil {
-		return fmt.Errorf("bind customer payment transaction: %w", err)
+	// 3. Update Payment Transaction Success
+	updatePaymentSuccess := `
+	UPDATE payment_transaction pt
+	JOIN master_payment_status mps ON mps.status_code = 'SUCCESS'
+	SET pt.payment_status_id = mps.id, pt.paid_at = NOW(), pt.failed_reason = NULL, pt.updated_at = NOW()
+	WHERE pt.payment_code = ? AND pt.paid_at IS NULL;
+	`
+	if _, err = tx.ExecContext(ctx, updatePaymentSuccess, req.PaymentCode); err != nil {
+		return fmt.Errorf("update payment success: %w", err)
+	}
+
+	// 4. Update Parking Session Success
+	updateSessionSuccess := `
+	UPDATE parking_session ps
+	JOIN payment_transaction pt ON pt.parking_session_id = ps.id
+	JOIN master_parking_status mps ON mps.status_code = 'PAID'
+	JOIN master_payment_status mpys ON mpys.status_code = 'SUCCESS'
+	SET ps.parking_status_id = mps.id, ps.payment_status_id = mpys.id, ps.paid_at = COALESCE(pt.paid_at, NOW()), ps.updated_at = NOW()
+	WHERE pt.payment_code = ?;
+	`
+	if _, err = tx.ExecContext(ctx, updateSessionSuccess, req.PaymentCode); err != nil {
+		return fmt.Errorf("update session success: %w", err)
+	}
+
+	// 5. Create Parking Receipt
+	receiptQuery := `
+	INSERT INTO parking_receipt (
+		parking_session_id, receipt_number, transaction_code, plate_number, vehicle_type_id,
+		location_id, amount, payment_method_id, paid_at, created_at
+	)
+	SELECT
+		ps.id, CONCAT('RCPT-', ps.transaction_code), ps.transaction_code, ps.plate_number, ps.vehicle_type_id,
+		ps.location_id, ps.amount, pt.payment_method_id, ps.paid_at, NOW()
+	FROM parking_session ps
+	JOIN payment_transaction pt ON pt.parking_session_id = ps.id
+	WHERE pt.payment_code = ?
+	ON DUPLICATE KEY UPDATE paid_at = VALUES(paid_at);
+	`
+	if _, err = tx.ExecContext(ctx, receiptQuery, req.PaymentCode); err != nil {
+		return fmt.Errorf("create receipt: %w", err)
+	}
+
+	// 6. Create Financial Parking Transaction
+	financialQuery := `
+	INSERT INTO financial_parking_transaction (
+		transaction_code, session_id, customer_user_id, jukir_user_id, officer_user_id,
+		location_id, area_id, zone_id, vehicle_type_id, plate_number,
+		operation_type, payment_method_id, transaction_status, base_amount, discount_amount,
+		final_amount, company_share, jukir_share, tax_amount, fee_amount,
+		occurred_at, paid_at, created_at, updated_at
+	)
+	SELECT
+		ps.transaction_code, ps.id, ps.customer_user_id, ps.officer_user_id, ps.officer_user_id,
+		ps.location_id, ps.area_id, lp.zone_id, ps.vehicle_type_id, ps.plate_number,
+		'ON_STREET', pt.payment_method_id, 'SUCCESS', ps.amount, 0,
+		ps.amount,
+		ps.amount - FLOOR(ps.amount * COALESCE((SELECT CAST(setting_value AS UNSIGNED) FROM config_parking_setting WHERE setting_key = 'DEFAULT_JUKIR_SHARE_PERCENT' LIMIT 1), 0) / 100),
+		FLOOR(ps.amount * COALESCE((SELECT CAST(setting_value AS UNSIGNED) FROM config_parking_setting WHERE setting_key = 'DEFAULT_JUKIR_SHARE_PERCENT' LIMIT 1), 0) / 100),
+		0, 0, ps.started_at, ps.paid_at, NOW(), NOW()
+	FROM parking_session ps
+	JOIN payment_transaction pt ON pt.parking_session_id = ps.id
+	JOIN location_parking lp ON lp.id = ps.location_id
+	WHERE pt.payment_code = ?
+	ON DUPLICATE KEY UPDATE paid_at = VALUES(paid_at), updated_at = NOW();
+	`
+	if _, err = tx.ExecContext(ctx, financialQuery, req.PaymentCode); err != nil {
+		return fmt.Errorf("create financial tx: %w", err)
+	}
+
+	// 7. Insert Notifikasi Success
+	notificationQuery := `
+	INSERT INTO notification_user (
+		user_id, notification_type_id, title, body, data_json, is_read, read_at, created_at
+	)
+	SELECT
+		target.user_id,
+		(SELECT id FROM master_notification_type WHERE notification_type_code = 'PAYMENT' LIMIT 1),
+		'Pembayaran Parkir Berhasil',
+		CONCAT('Pembayaran parkir ', ps.plate_number, ' sebesar Rp ', ps.amount, ' berhasil.'),
+		JSON_OBJECT('sessionId', ps.id, 'transactionCode', ps.transaction_code, 'status', 'SUCCESS', 'amount', ps.amount),
+		0, NULL, NOW()
+	FROM parking_session ps
+	JOIN payment_transaction pt ON pt.parking_session_id = ps.id
+	JOIN (
+		SELECT ps1.customer_user_id AS user_id, ps1.id AS session_id FROM parking_session ps1 WHERE ps1.customer_user_id IS NOT NULL
+		UNION
+		SELECT ps2.officer_user_id AS user_id, ps2.id AS session_id FROM parking_session ps2
+	) target ON target.session_id = ps.id
+	WHERE pt.payment_code = ?;
+	`
+	if _, err = tx.ExecContext(ctx, notificationQuery, req.PaymentCode); err != nil {
+		return fmt.Errorf("send notification: %w", err)
 	}
 
 	if err = tx.Commit(); err != nil {
-		return fmt.Errorf("commit bind customer tx: %w", err)
+		return fmt.Errorf("commit success payment transaction: %w", err)
 	}
 
 	return nil
 }
 
-func (r *PaymentRepositoryImpl) UpdatePaymentTransactionSuccess(ctx context.Context, req model.PaymentBusinessModel) error {
-	query := `
+func (r *PaymentRepositoryImpl) ProcessPaymentFailed(ctx context.Context, req model.PaymentBusinessModel) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin failed payment transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	// 1. Update Payment Transaction Failed
+	updatePaymentFailed := `
 	UPDATE payment_transaction pt
-
-	JOIN master_payment_status mps
-		ON mps.status_code = 'SUCCESS'
-
-	SET
-		pt.payment_status_id = mps.id,
-		pt.paid_at = NOW(),
-		pt.failed_reason = NULL,
-		pt.updated_at = NOW()
-
-	WHERE pt.payment_code = ?
-	AND pt.paid_at IS NULL;
+	JOIN master_payment_status mps ON mps.status_code = 'FAILED'
+	SET pt.payment_status_id = mps.id, pt.failed_reason = ?, pt.updated_at = NOW()
+	WHERE pt.payment_code = ? AND pt.paid_at IS NULL;
 	`
-
-	if _, err := r.db.ExecContext(ctx, query, req.PaymentCode); err != nil {
-		return fmt.Errorf("update payment transaction success: %w", err)
+	if _, err = tx.ExecContext(ctx, updatePaymentFailed, req.FailedReason, req.PaymentCode); err != nil {
+		return fmt.Errorf("update payment failed: %w", err)
 	}
 
-	return nil
-}
-
-func (r *PaymentRepositoryImpl) UpdateParkingSessionSuccess(ctx context.Context, req model.PaymentBusinessModel) error {
-	query := `
+	// 2. Update Parking Session Failed
+	updateSessionFailed := `
 	UPDATE parking_session ps
-
-	JOIN payment_transaction pt
-		ON pt.parking_session_id = ps.id
-
-	JOIN master_parking_status mps
-		ON mps.status_code = 'PAID'
-
-	JOIN master_payment_status mpys
-		ON mpys.status_code = 'SUCCESS'
-
-	SET
-		ps.parking_status_id = mps.id,
-		ps.payment_status_id = mpys.id,
-		ps.paid_at = COALESCE(pt.paid_at, NOW()),
-		ps.updated_at = NOW()
-
+	JOIN payment_transaction pt ON pt.parking_session_id = ps.id
+	JOIN master_payment_status mps ON mps.status_code = 'FAILED'
+	SET ps.payment_status_id = mps.id, ps.updated_at = NOW()
 	WHERE pt.payment_code = ?;
 	`
-
-	if _, err := r.db.ExecContext(ctx, query, req.PaymentCode); err != nil {
-		return fmt.Errorf("update parking session success: %w", err)
+	if _, err = tx.ExecContext(ctx, updateSessionFailed, req.PaymentCode); err != nil {
+		return fmt.Errorf("update session failed: %w", err)
 	}
 
-	return nil
-}
-
-func (r *PaymentRepositoryImpl) BuatParkingReceipt(ctx context.Context, req model.PaymentBusinessModel) error {
-	query := `
-	INSERT INTO parking_receipt (
-		parking_session_id,
-		receipt_number,
-		transaction_code,
-		plate_number,
-		vehicle_type_id,
-		location_id,
-		amount,
-		payment_method_id,
-		paid_at,
-		created_at
-	)
-	SELECT
-		ps.id,
-		CONCAT('RCPT-', ps.transaction_code),
-		ps.transaction_code,
-		ps.plate_number,
-		ps.vehicle_type_id,
-		ps.location_id,
-		ps.amount,
-		pt.payment_method_id,
-		ps.paid_at,
-		NOW()
-
-	FROM parking_session ps
-
-	JOIN payment_transaction pt
-		ON pt.parking_session_id = ps.id
-
-	WHERE pt.payment_code = ?
-
-	ON DUPLICATE KEY UPDATE
-		paid_at = VALUES(paid_at);
-	`
-
-	if _, err := r.db.ExecContext(ctx, query, req.PaymentCode); err != nil {
-		return fmt.Errorf("buat parking receipt: %w", err)
-	}
-
-	return nil
-}
-
-func (r *PaymentRepositoryImpl) BuatFinancialParkingTransaction(ctx context.Context, req model.PaymentBusinessModel) error {
-	query := `
-	INSERT INTO financial_parking_transaction (
-		transaction_code,
-		session_id,
-
-		customer_user_id,
-		jukir_user_id,
-		officer_user_id,
-
-		location_id,
-		area_id,
-		zone_id,
-
-		vehicle_type_id,
-		plate_number,
-
-		operation_type,
-		payment_method_id,
-		transaction_status,
-
-		base_amount,
-		discount_amount,
-		final_amount,
-
-		company_share,
-		jukir_share,
-
-		tax_amount,
-		fee_amount,
-
-		occurred_at,
-		paid_at,
-
-		created_at,
-		updated_at
-	)
-	SELECT
-		ps.transaction_code,
-		ps.id,
-
-		ps.customer_user_id,
-		ps.officer_user_id,
-		ps.officer_user_id,
-
-		ps.location_id,
-		ps.area_id,
-		lp.zone_id,
-
-		ps.vehicle_type_id,
-		ps.plate_number,
-
-		'ON_STREET',
-		pt.payment_method_id,
-		'SUCCESS',
-
-		ps.amount,
-		0,
-		ps.amount,
-
-		ps.amount - FLOOR(
-			ps.amount * COALESCE((
-				SELECT CAST(setting_value AS UNSIGNED)
-				FROM config_parking_setting
-				WHERE setting_key = 'DEFAULT_JUKIR_SHARE_PERCENT'
-				LIMIT 1
-			), 0) / 100
-		),
-
-		FLOOR(
-			ps.amount * COALESCE((
-				SELECT CAST(setting_value AS UNSIGNED)
-				FROM config_parking_setting
-				WHERE setting_key = 'DEFAULT_JUKIR_SHARE_PERCENT'
-				LIMIT 1
-			), 0) / 100
-		),
-
-		0,
-		0,
-
-		ps.started_at,
-		ps.paid_at,
-
-		NOW(),
-		NOW()
-
-	FROM parking_session ps
-
-	JOIN payment_transaction pt
-		ON pt.parking_session_id = ps.id
-
-	JOIN location_parking lp
-		ON lp.id = ps.location_id
-
-	WHERE pt.payment_code = ?
-
-	ON DUPLICATE KEY UPDATE
-		paid_at = VALUES(paid_at),
-		updated_at = NOW();
-	`
-
-	if _, err := r.db.ExecContext(ctx, query, req.PaymentCode); err != nil {
-		return fmt.Errorf("buat financial parking transaction: %w", err)
-	}
-
-	return nil
-}
-
-func (r *PaymentRepositoryImpl) InsertNotifikasiSuccess(ctx context.Context, req model.PaymentBusinessModel) error {
-	query := `
+	// 3. Insert Notifikasi Failed
+	notificationQuery := `
 	INSERT INTO notification_user (
-		user_id,
-		notification_type_id,
-		title,
-		body,
-		data_json,
-		is_read,
-		read_at,
-		created_at
+		user_id, notification_type_id, title, body, data_json, is_read, read_at, created_at
 	)
 	SELECT
 		target.user_id,
-		(
-			SELECT id
-			FROM master_notification_type
-			WHERE notification_type_code = 'PAYMENT'
-			LIMIT 1
-		),
-		'Pembayaran Parkir Berhasil',
-		CONCAT('Pembayaran parkir ', ps.plate_number, ' sebesar Rp ', ps.amount, ' berhasil.'),
-		JSON_OBJECT(
-			'sessionId', ps.id,
-			'transactionCode', ps.transaction_code,
-			'status', 'SUCCESS',
-			'amount', ps.amount
-		),
-		0,
-		NULL,
-		NOW()
-
-	FROM parking_session ps
-
-	JOIN payment_transaction pt
-		ON pt.parking_session_id = ps.id
-
-	JOIN (
-		SELECT ps1.customer_user_id AS user_id, ps1.id AS session_id
-		FROM parking_session ps1
-		WHERE ps1.customer_user_id IS NOT NULL
-
-		UNION
-
-		SELECT ps2.officer_user_id AS user_id, ps2.id AS session_id
-		FROM parking_session ps2
-	) target
-		ON target.session_id = ps.id
-
-	WHERE pt.payment_code = ?;
-	`
-
-	if _, err := r.db.ExecContext(ctx, query, req.PaymentCode); err != nil {
-		return fmt.Errorf("insert notifikasi success: %w", err)
-	}
-
-	return nil
-}
-
-func (r *PaymentRepositoryImpl) UpdatePaymentTransactionFailed(ctx context.Context, req model.PaymentBusinessModel) error {
-	query := `
-	UPDATE payment_transaction pt
-
-	JOIN master_payment_status mps
-		ON mps.status_code = 'FAILED'
-
-	SET
-		pt.payment_status_id = mps.id,
-		pt.failed_reason = ?,
-		pt.updated_at = NOW()
-
-	WHERE pt.payment_code = ?
-	AND pt.paid_at IS NULL;
-	`
-
-	if _, err := r.db.ExecContext(ctx, query, req.FailedReason, req.PaymentCode); err != nil {
-		return fmt.Errorf("update payment transaction failed: %w", err)
-	}
-
-	return nil
-}
-
-func (r *PaymentRepositoryImpl) UpdateParkingSessionFailed(ctx context.Context, req model.PaymentBusinessModel) error {
-	query := `
-	UPDATE parking_session ps
-
-	JOIN payment_transaction pt
-		ON pt.parking_session_id = ps.id
-
-	JOIN master_payment_status mps
-		ON mps.status_code = 'FAILED'
-
-	SET
-		ps.payment_status_id = mps.id,
-		ps.updated_at = NOW()
-
-	WHERE pt.payment_code = ?;
-	`
-
-	if _, err := r.db.ExecContext(ctx, query, req.PaymentCode); err != nil {
-		return fmt.Errorf("update parking session failed: %w", err)
-	}
-
-	return nil
-}
-
-func (r *PaymentRepositoryImpl) InsertNotifikasiFailed(ctx context.Context, req model.PaymentBusinessModel) error {
-	query := `
-	INSERT INTO notification_user (
-		user_id,
-		notification_type_id,
-		title,
-		body,
-		data_json,
-		is_read,
-		read_at,
-		created_at
-	)
-	SELECT
-		target.user_id,
-		(
-			SELECT id
-			FROM master_notification_type
-			WHERE notification_type_code = 'PAYMENT'
-			LIMIT 1
-		),
+		(SELECT id FROM master_notification_type WHERE notification_type_code = 'PAYMENT' LIMIT 1),
 		'Pembayaran Parkir Gagal',
 		CONCAT('Pembayaran parkir ', ps.plate_number, ' gagal.'),
-		JSON_OBJECT(
-			'sessionId', ps.id,
-			'transactionCode', ps.transaction_code,
-			'status', 'FAILED',
-			'amount', ps.amount
-		),
-		0,
-		NULL,
-		NOW()
-
+		JSON_OBJECT('sessionId', ps.id, 'transactionCode', ps.transaction_code, 'status', 'FAILED', 'amount', ps.amount),
+		0, NULL, NOW()
 	FROM parking_session ps
-
-	JOIN payment_transaction pt
-		ON pt.parking_session_id = ps.id
-
+	JOIN payment_transaction pt ON pt.parking_session_id = ps.id
 	JOIN (
-		SELECT ps1.customer_user_id AS user_id, ps1.id AS session_id
-		FROM parking_session ps1
-		WHERE ps1.customer_user_id IS NOT NULL
-
+		SELECT ps1.customer_user_id AS user_id, ps1.id AS session_id FROM parking_session ps1 WHERE ps1.customer_user_id IS NOT NULL
 		UNION
-
-		SELECT ps2.officer_user_id AS user_id, ps2.id AS session_id
-		FROM parking_session ps2
-	) target
-		ON target.session_id = ps.id
-
+		SELECT ps2.officer_user_id AS user_id, ps2.id AS session_id FROM parking_session ps2
+	) target ON target.session_id = ps.id
 	WHERE pt.payment_code = ?;
 	`
+	if _, err = tx.ExecContext(ctx, notificationQuery, req.PaymentCode); err != nil {
+		return fmt.Errorf("send notification failed: %w", err)
+	}
 
-	if _, err := r.db.ExecContext(ctx, query, req.PaymentCode); err != nil {
-		return fmt.Errorf("insert notifikasi failed: %w", err)
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("commit failed payment transaction: %w", err)
 	}
 
 	return nil

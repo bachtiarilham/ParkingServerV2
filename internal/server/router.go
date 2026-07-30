@@ -15,12 +15,12 @@ import (
 	webapi "modulegue/internal/data/website/remote/api"
 
 	//repo
+	searchrepo "modulegue/internal/data/mobile/repository_impl/filter_pencarian"
 	helperrepo "modulegue/internal/data/mobile/repository_impl/helper"
 	homerepo "modulegue/internal/data/mobile/repository_impl/home"
-	laporanrepo "modulegue/internal/data/mobile/repository_impl/laporan"
+	invoicerepo "modulegue/internal/data/mobile/repository_impl/invoice"
 	parkingrepo "modulegue/internal/data/mobile/repository_impl/parking"
 	paymentrepo "modulegue/internal/data/mobile/repository_impl/payment_parking"
-	riwayatrepo "modulegue/internal/data/mobile/repository_impl/riwayat"
 	subscriptionrepo "modulegue/internal/data/mobile/repository_impl/subcription"
 	topuprepo "modulegue/internal/data/mobile/repository_impl/topup"
 	authrepo "modulegue/internal/data/shared/repository_impl/auth"
@@ -33,12 +33,12 @@ import (
 
 	webdelivery "modulegue/internal/delivery/web"
 	//usecase
+	searchuc "modulegue/internal/domain/mobile/usecase/filter_pencarian"
 	helperuc "modulegue/internal/domain/mobile/usecase/helper"
 	homeuc "modulegue/internal/domain/mobile/usecase/home"
-	laporanuc "modulegue/internal/domain/mobile/usecase/laporan"
+	invoiceuc "modulegue/internal/domain/mobile/usecase/invoice"
 	parkinguc "modulegue/internal/domain/mobile/usecase/parking"
 	paymentuc "modulegue/internal/domain/mobile/usecase/payment_parking"
-	riwayatuc "modulegue/internal/domain/mobile/usecase/riwayat"
 	subscriptionuc "modulegue/internal/domain/mobile/usecase/subscription"
 	topupuc "modulegue/internal/domain/mobile/usecase/topup"
 	authmodel "modulegue/internal/domain/shared/model/auth"
@@ -49,7 +49,18 @@ import (
 	webpetugasuc "modulegue/internal/domain/web/usecase/petugas"
 	websettinguc "modulegue/internal/domain/web/usecase/setting"
 	webtopupuc "modulegue/internal/domain/web/usecase/topup"
-	"modulegue/internal/service/payment_gateway"
+
+	//payment_gate
+	paymentgaterepo "modulegue/internal/data/mobile/repository_impl/payment_gate"
+	paymentgateuc "modulegue/internal/domain/mobile/usecase/payment_gate"
+	midtrans "modulegue/internal/service/payment_gateway/midtrans"
+
+	//sync
+	syncrepo "modulegue/internal/data/mobile/repository_impl/sync"
+
+	//settings
+	settingsrepo "modulegue/internal/data/mobile/repository_impl/settings"
+	settingsuc "modulegue/internal/domain/mobile/usecase/settings"
 )
 
 func NewRouter(
@@ -67,35 +78,21 @@ func NewRouter(
 	authRepository := authrepo.NewAuthRepositoryImpl(db)
 	sessionRepository := authrepo.NewSessionRepositoryImpl(db)
 	homeRepository := homerepo.NewHomeRepositoryImpl(db)
-	laporanRepository := laporanrepo.NewLaporanRepositoryImpl(db)
-	riwayatRepository := riwayatrepo.NewRiwayatRepositoryImpl(db)
+	searchrepo := searchrepo.NewFilterPencarianRepoImpl(db)
+	invoicerepo := invoicerepo.NewInvoiceRepositoryImpl(db)
 	subscriptionRepository := subscriptionrepo.NewSubscriptionRepositoryImpl(db)
 	parkingRepository := parkingrepo.NewParkingRepositoryImpl(db)
 	paymentRepository := paymentrepo.NewPaymentRepositoryImpl(db)
 	statusPaymentRepository := paymentrepo.NewStatusPaymentRepositoryImpl(db)
 	helperRepository := helperrepo.NewHelperRepositoryImpl(db)
 	topUpRepository := topuprepo.NewTopUpRepositoryImpl(db)
+	paymentCallbackRepository := paymentgaterepo.NewPaymentCallbackRepositoryImpl(db)
+	syncRepository := syncrepo.NewSyncRepoImpl(db)
+	paymentGateRepository := paymentgaterepo.NewPaymentGateRepositoryImpl(db)
+	settingsRepository := settingsrepo.NewSettingsRepositoryImpl(db)
 
-	loginWebRepo := webloginrepo.NewHomeRepositoryImpl(db)
-	webHelperRepo := webhelperrepo.NewHelperRepositoryImpl(db)
-	webMonitoringRepo := webmonitoringrepo.NewMonitoringRepositoryImpl(db)
-	petugasWebRepo := webpetugasrepo.NewPetugasRepositoryImpl(db)
-	settingWebRepo := websettingrepo.NewSettingRepositoryImpl(db)
-	topupWebRepo := webtopuprepo.NewTopUpRepositoryImpl(db)
-
-	var midtransService *payment_gateway.MidtransService
-	if cfg.MidtransServerKey != "" && cfg.MidtransClientKey != "" {
-		service, err := payment_gateway.NewMidtransService(payment_gateway.MidtransConfig{
-			ServerKey:   cfg.MidtransServerKey,
-			ClientKey:   cfg.MidtransClientKey,
-			Environment: cfg.AppEnv,
-		})
-		if err != nil {
-			logger.Printf("midtrans service disabled: %v", err)
-		} else {
-			midtransService = service
-		}
-	}
+	isProduction := cfg.AppEnv == "production"
+	midtransClient := midtrans.NewMidtransClient(cfg.MidtransServerKey, isProduction)
 
 	//uc shared
 	registerUC := authuc.NewRegisterUseCase(authRepository)
@@ -118,10 +115,11 @@ func NewRouter(
 	changePasswordUC := authuc.NewChangePasswordUseCase(authRepository, sessionRepository)
 	//uc mobile
 	homeUC := homeuc.NewGetHomeUseCase(homeRepository)
-	laporanUC := laporanuc.NewGetLaporanUseCase(laporanRepository)
-	riwayatUC := riwayatuc.NewGetRiwayatUseCase(riwayatRepository)
-	getParkirDetilUC := riwayatuc.NewGetParkirDetilUseCase(riwayatRepository)
-	getTransaksiDetilUC := riwayatuc.NewGetTransaksiDetilUseCase(riwayatRepository)
+	laporanuc := searchuc.NewGetLaporanUseCase(searchrepo)
+	riwayatmemberuc := searchuc.NewGetRiwayatMembershipUseCase(searchrepo)
+	riwayatparkiruc := searchuc.NewGetRiwayatParkirUseCase(searchrepo)
+	riwayattrxuc := searchuc.NewGetRiwayatTransaksiUseCase(searchrepo)
+	invoiceuc := invoiceuc.NewGetInvoiceUseCase(invoicerepo)
 	subscriptionUC := subscriptionuc.NewSubscriptionUseCase(subscriptionRepository)
 	postParkingUC := parkinguc.NewPostParkingUseCase(parkingRepository)
 	topupUC := topupuc.NewTopUpUseCase(topUpRepository, cfg.AdminFeeTopUp)
@@ -130,10 +128,27 @@ func NewRouter(
 	getPembayaranStatusUC := paymentuc.NewGetPembayaranStatusUseCase(statusPaymentRepository)
 	getLokasiUC := helperuc.NewGetLokasiUseCase(helperRepository)
 	getTarifUC := helperuc.NewGetTarifUseCase(helperRepository)
-	GetNominalTopUpUc := helperuc.NewNominalTopUpUseCase(helperRepository)
+	GetNominalPaymentUc := helperuc.NewNominalTopUpUseCase(helperRepository)
+	GetPaymentMethodUc := helperuc.NewGetPaymentMethodUseCase(helperRepository)
+
 	getStatusTopUpUc := topupuc.NewGetTopUpStatusUseCase(topUpRepository)
+	paymentCallbackUC := paymentgateuc.NewPaymentCallbackUseCase(paymentCallbackRepository, syncRepository, midtransClient)
+	getPaymentStatusUC := paymentgateuc.NewGetPaymentStatusUseCase(paymentCallbackRepository)
+	payTransferUC := paymentgateuc.NewPayTransferUseCase(paymentGateRepository)
+	payTopUpUC := paymentgateuc.NewPayTopUpUseCase(paymentGateRepository, midtransClient)
+	payMembershipUC := paymentgateuc.NewPayMembershipUseCase(paymentGateRepository, midtransClient)
+	payParkingUC := paymentgateuc.NewPayParkingUseCase(paymentGateRepository, midtransClient)
+	payCashParkingUc := paymentgateuc.NewPayCashParkirUseCase(paymentGateRepository, syncRepository, paymentCallbackRepository)
+	changeProfileUC := settingsuc.NewChangeProfileUseCase(settingsRepository)
 
 	//uc website
+	loginWebRepo := webloginrepo.NewHomeRepositoryImpl(db)
+	webHelperRepo := webhelperrepo.NewHelperRepositoryImpl(db)
+	webMonitoringRepo := webmonitoringrepo.NewMonitoringRepositoryImpl(db)
+	petugasWebRepo := webpetugasrepo.NewPetugasRepositoryImpl(db)
+	settingWebRepo := websettingrepo.NewSettingRepositoryImpl(db)
+	topupWebRepo := webtopuprepo.NewTopUpRepositoryImpl(db)
+
 	webLoginUC := webloginuc.NewLoginUseCase(
 		loginWebRepo,
 		sessionRepository,
@@ -156,12 +171,19 @@ func NewRouter(
 
 	mobileapi.RegisterRoutes(
 		mux,
-
 		homeUC,
-		laporanUC,
-		riwayatUC,
-		getParkirDetilUC,
-		getTransaksiDetilUC,
+		laporanuc,
+		riwayatmemberuc,
+		riwayatparkiruc,
+		riwayattrxuc,
+		invoiceuc,
+		paymentCallbackUC,
+		getPaymentStatusUC,
+		payTransferUC,
+		payTopUpUC,
+		payMembershipUC,
+		payParkingUC,
+		payCashParkingUc,
 		subscriptionUC,
 		postParkingUC,
 		postPaymentParkingUC,
@@ -169,10 +191,12 @@ func NewRouter(
 		topupUC,
 		topupCallbackUC,
 		getStatusTopUpUc,
-		midtransService,
+		midtransClient,
 		getLokasiUC,
 		getTarifUC,
-		GetNominalTopUpUc,
+		GetNominalPaymentUc,
+		GetPaymentMethodUc,
+		changeProfileUC,
 		queue,
 		logger,
 	)

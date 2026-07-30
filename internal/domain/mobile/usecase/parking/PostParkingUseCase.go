@@ -3,6 +3,7 @@ package parking
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	model "modulegue/internal/domain/mobile/model/parking"
@@ -22,7 +23,9 @@ func NewPostParkingUseCase(
 }
 
 func (uc *PostParkingUseCase) Execute(ctx context.Context, reqModel model.PostParkingRequestModel) (*model.PostParkingResponseModel, error) {
-	businessModel, err := uc.postParkingRepo.PostParking(ctx, reqModel)
+	strings.ToUpper(strings.TrimSpace(reqModel.PlateNumber))
+
+	businessModel, err := uc.postParkingRepo.GetParkingMetadata(ctx, reqModel)
 	if err != nil {
 		return nil, fmt.Errorf("post parking lookup: %w", err)
 	}
@@ -30,38 +33,13 @@ func (uc *PostParkingUseCase) Execute(ctx context.Context, reqModel model.PostPa
 		return nil, fmt.Errorf("post parking lookup returned empty data")
 	}
 
-	now := time.Now().UTC()
-	businessModel.PlateNumber = reqModel.PlateNumber
-	businessModel.SessionCode = buildParkingCode("SESSION", now)
-	businessModel.TransactionCode = buildParkingCode("TRX", now)
-	businessModel.PaymentCode = buildParkingCode("PAY", now)
-	businessModel.QrisString = businessModel.SessionCode
-	businessModel.ExternalReference = businessModel.PaymentCode
-	businessModel.ProviderName = "DEV_PROVIDER"
-	businessModel.ParkingStatusId = 1
-	businessModel.PaymentStatusId = 1
-
-	sessionID, err := uc.postParkingRepo.InsertParkingSession(ctx, *businessModel)
+	result, err := uc.postParkingRepo.CreateParkingTransaction(ctx, reqModel, *businessModel)
 	if err != nil {
-		return nil, fmt.Errorf("insert parking session: %w", err)
-	}
-	businessModel.SessionId = sessionID
-
-	if err := uc.postParkingRepo.InsertQrisString(ctx, *businessModel); err != nil {
-		return nil, fmt.Errorf("insert qris string: %w", err)
+		return nil, fmt.Errorf("create parking: %w", err)
 	}
 
-	result, err := uc.postParkingRepo.ReturnToApp(ctx, *businessModel)
-	if err != nil {
-		return nil, fmt.Errorf("return to app: %w", err)
-	}
-	if result != nil {
-		return result, nil
-	}
-
-	return nil, nil
-}
-
-func buildParkingCode(prefix string, t time.Time) string {
-	return fmt.Sprintf("%s-%s-%06d", prefix, t.Format("20060102"), t.Nanosecond()%1000000)
+	// result.QrExpired = time.Duration(15 * time.Minute)
+	result.QrExpired = time.Now().Add(15 * time.Minute)
+	result.BiayaParkir = reqModel.BiayaParkir
+	return result, nil
 }

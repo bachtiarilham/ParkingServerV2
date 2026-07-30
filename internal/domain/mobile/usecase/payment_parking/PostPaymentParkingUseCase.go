@@ -21,7 +21,7 @@ func NewPostPaymentParkingUseCase(
 }
 
 func (uc *PostPaymentParkingUseCase) Execute(ctx context.Context, reqModel model.PostPaymentParkingRequestModel) (*model.PostPaymentParkingResponseModel, error) {
-	prepared, err := uc.postPaymentParkingRepo.PostPaymentParking(ctx, reqModel)
+	prepared, err := uc.postPaymentParkingRepo.PayParking(ctx, reqModel)
 	if err != nil {
 		return nil, fmt.Errorf("post payment parking: %w", err)
 	}
@@ -43,28 +43,8 @@ func (uc *PostPaymentParkingUseCase) Execute(ctx context.Context, reqModel model
 		FailedReason: "",
 	}
 
-	if err := uc.postPaymentParkingRepo.BindCustomerToSessionAndTransaction(ctx, businessModel); err != nil {
-		return nil, fmt.Errorf("bind customer to session and transaction: %w", err)
-	}
-
-	if err := uc.postPaymentParkingRepo.UpdatePaymentTransactionSuccess(ctx, businessModel); err != nil {
-		return nil, fmt.Errorf("update payment transaction success: %w", err)
-	}
-
-	if err := uc.postPaymentParkingRepo.UpdateParkingSessionSuccess(ctx, businessModel); err != nil {
-		return nil, fmt.Errorf("update parking session success: %w", err)
-	}
-
-	if err := uc.postPaymentParkingRepo.BuatParkingReceipt(ctx, businessModel); err != nil {
-		return nil, fmt.Errorf("buat parking receipt: %w", err)
-	}
-
-	if err := uc.postPaymentParkingRepo.BuatFinancialParkingTransaction(ctx, businessModel); err != nil {
-		return nil, fmt.Errorf("buat financial parking transaction: %w", err)
-	}
-
-	if err := uc.postPaymentParkingRepo.InsertNotifikasiSuccess(ctx, businessModel); err != nil {
-		return nil, fmt.Errorf("insert notifikasi success: %w", err)
+	if err := uc.postPaymentParkingRepo.ProcessPaymentSuccess(ctx, businessModel); err != nil {
+		return nil, fmt.Errorf("process payment success: %w", err)
 	}
 
 	return &model.PostPaymentParkingResponseModel{

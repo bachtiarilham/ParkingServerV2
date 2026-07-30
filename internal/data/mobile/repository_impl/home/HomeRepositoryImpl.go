@@ -83,7 +83,7 @@ func (r *HomeRepositoryImpl) getCustomerProfile(ctx context.Context, userID int6
 		mr.role_code,
 		mr.role_name,
 
-		COALESCE(suh.saldo, 0) AS saldo,
+		COALESCE(suh.current_balance_amount, 0) AS saldo,
 
 		sch.active_membership_id,
 		sch.membership_package_name,
@@ -103,7 +103,7 @@ func (r *HomeRepositoryImpl) getCustomerProfile(ctx context.Context, userID int6
 	JOIN master_role mr
 		ON mr.id = ui.role_id
 
-	LEFT JOIN summary_user_home suh
+	JOIN wallet_account suh
 		ON suh.user_id = ui.id
 
 	LEFT JOIN summary_customer_home sch
@@ -167,81 +167,98 @@ func (r *HomeRepositoryImpl) getCustomerProfile(ctx context.Context, userID int6
 
 func (r *HomeRepositoryImpl) getJukirProfile(ctx context.Context, userID int64) (*profileModel.JukirModel, error) {
 	query := `
+	SELECT
+		ui.id AS user_id,
+		ui.nik,
+		ui.full_name,
+		ui.username,
+		ui.email,
+		ui.phone_number,
+		ui.photo_url,
+		ui.is_verified,
+		ui.role_id,
+
+		mr.role_code,
+		mr.role_name,
+
+		COALESCE(suh.current_balance_amount, 0) AS saldo,
+
+		aoc.location_id,
+		lp.location_code,
+		lp.location_name AS location_name, -- Diambil langsung dari master lokasi
+		lp.address,
+		lp.center_latitude,
+		lp.center_longitude,
+		lp.radius_meter,
+
+		aoc.area_id,
+		la.area_name AS area_name, -- Diambil langsung dari master area
+
+		aoc.zone_id,
+		lz.zone_name AS zone_name, -- Diambil langsung dari master zona
+
+		aoc.effective_from AS assignment_effective_from,
+		aoc.effective_to AS assignment_effective_to,
+
+		-- Diambil dari summary_officer_daily_report hari ini
+		COALESCE(today_report.total_jukir_share, 0) AS today_income,
+		-- Diambil dari subquery akumulasi seluruh pendapatan jukir
+		COALESCE(lifetime.total_lifetime_income, 0) AS total_income,
+		-- Diambil dari summary_officer_daily_report hari ini
+		COALESCE(today_report.total_transaction, 0) AS today_transaction_count,
+
+		COALESCE(unread_notif.unread_count, 0) AS unread_notification_count
+
+	FROM user_identity ui
+
+	JOIN master_role mr
+		ON mr.id = ui.role_id
+
+	-- Menghubungkan langsung ke saldo wallet utama petugas
+	JOIN wallet_account suh
+		ON suh.user_id = ui.id 
+	AND suh.wallet_type_id = 1
+
+	LEFT JOIN assignment_officer_current aoc
+		ON aoc.officer_user_id = ui.id
+
+	LEFT JOIN location_parking lp
+		ON lp.id = aoc.location_id
+
+	LEFT JOIN location_area la
+		ON la.id = aoc.area_id
+
+	LEFT JOIN location_zone lz
+		ON lz.id = aoc.zone_id
+
+	-- Mengambil data performa jukir KHUSUS HARI INI
+	LEFT JOIN summary_officer_daily_report today_report 
+		ON today_report.officer_user_id = ui.id 
+	AND today_report.report_date = CURRENT_DATE()
+
+	-- Mengambil total performa pendapatan jukir SEPANJANG MASA
+	LEFT JOIN (
+		SELECT 
+			officer_user_id, 
+			SUM(total_jukir_share) AS total_lifetime_income
+		FROM summary_officer_daily_report
+		GROUP BY officer_user_id
+	) lifetime 
+		ON lifetime.officer_user_id = ui.id
+
+	LEFT JOIN (
 		SELECT
-			ui.id AS user_id,
-			ui.nik,
-			ui.full_name,
-			ui.username,
-			ui.email,
-			ui.phone_number,
-			ui.photo_url,
-			ui.is_verified,
-			ui.role_id,
+			user_id,
+			COUNT(*) AS unread_count
+		FROM notification_user
+		WHERE is_read = 0
+		GROUP BY user_id
+	) unread_notif
+		ON unread_notif.user_id = ui.id
 
-			mr.role_code,
-			mr.role_name,
-
-			COALESCE(suh.saldo, 0) AS saldo,
-
-			aoc.location_id,
-			lp.location_code,
-			COALESCE(soh.location_name, lp.location_name) AS location_name,
-			lp.address,
-			lp.center_latitude,
-			lp.center_longitude,
-			lp.radius_meter,
-
-			aoc.area_id,
-			COALESCE(soh.area_name, la.area_name) AS area_name,
-
-			aoc.zone_id,
-			COALESCE(soh.zone_name, lz.zone_name) AS zone_name,
-
-			aoc.effective_from AS assignment_effective_from,
-			aoc.effective_to AS assignment_effective_to,
-
-			COALESCE(soh.today_income, 0) AS today_income,
-			COALESCE(soh.total_income, 0) AS total_income,
-			COALESCE(soh.today_transaction_count, 0) AS today_transaction_count,
-
-			COALESCE(unread_notif.unread_count, 0) AS unread_notification_count
-
-		FROM user_identity ui
-
-		JOIN master_role mr
-			ON mr.id = ui.role_id
-
-		LEFT JOIN summary_user_home suh
-			ON suh.user_id = ui.id
-
-		LEFT JOIN assignment_officer_current aoc
-			ON aoc.officer_user_id = ui.id
-
-		LEFT JOIN location_parking lp
-			ON lp.id = aoc.location_id
-
-		LEFT JOIN location_area la
-			ON la.id = aoc.area_id
-
-		LEFT JOIN location_zone lz
-			ON lz.id = aoc.zone_id
-
-		LEFT JOIN summary_officer_home soh
-			ON soh.user_id = ui.id
-
-		LEFT JOIN (
-			SELECT
-				user_id,
-				COUNT(*) AS unread_count
-			FROM notification_user
-			WHERE is_read = 0
-			GROUP BY user_id
-		) unread_notif
-			ON unread_notif.user_id = ui.id
-
-		WHERE ui.id = ?
-		AND mr.role_code = 'OFFICER'
-		AND ui.status = 'ACTIVE'
+	WHERE ui.id = ? -- Gunakan placeholder parameter untuk User ID (e.g. 2)
+	AND mr.role_code = 'OFFICER'
+	AND ui.status = 'ACTIVE'
 
 	LIMIT 1;
 	`

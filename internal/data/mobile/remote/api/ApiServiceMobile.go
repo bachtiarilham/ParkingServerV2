@@ -2,30 +2,14 @@ package api
 
 import (
 	"log"
-	"net/http"
-
-	// "time"
-
 	"modulegue/config"
-
 	"modulegue/core/queue"
 	middleware "modulegue/internal/middleware"
-
-	// //auth
-	// authUc "modulegue/internal/domain/mobile/usecase/auth"
-	// authHandler "modulegue/internal/handler/mobile/auth"
+	"net/http"
 
 	//home
 	homeUc "modulegue/internal/domain/mobile/usecase/home"
 	homeHandler "modulegue/internal/handler/mobile/home"
-
-	//laporan
-	laporanUc "modulegue/internal/domain/mobile/usecase/laporan"
-	laporanHandler "modulegue/internal/handler/mobile/laporan"
-
-	//riwayat
-	riwayatUc "modulegue/internal/domain/mobile/usecase/riwayat"
-	riwayatHandler "modulegue/internal/handler/mobile/riwayat"
 
 	//subscription
 	subscriptionUc "modulegue/internal/domain/mobile/usecase/subscription"
@@ -47,30 +31,43 @@ import (
 	topupUc "modulegue/internal/domain/mobile/usecase/topup"
 	getTopUpStatusHandler "modulegue/internal/handler/mobile/topup"
 	topupHandler "modulegue/internal/handler/mobile/topup"
-	// mobile_handler "modulegue/internal/delivery/mobile/customer/handler"
-	// jukir_handler "modulegue/internal/delivery/mobile/handler"
-	// shared_handler "modulegue/internal/delivery/shared/handler"
-	// paymentuc "modulegue/internal/usecase/payment"
-	// useruc "modulegue/internal/usecase/user"
-	// qruc "modulegue/internal/usecase/qr"
+
+	//search
+	searchuc "modulegue/internal/domain/mobile/usecase/filter_pencarian"
+	searchhandler "modulegue/internal/handler/mobile/filter_pencarian"
+
+	//invoice
+	invoiceuc "modulegue/internal/domain/mobile/usecase/invoice"
+	invoicehandler "modulegue/internal/handler/mobile/invoice"
+
+	//payment_gate
+	paymentgateuc "modulegue/internal/domain/mobile/usecase/payment_gate"
+	paymentgatehandler "modulegue/internal/handler/mobile/payment_gate"
+
+	//settings
+	settingsuc "modulegue/internal/domain/mobile/usecase/settings"
+	settingshandler "modulegue/internal/handler/mobile/settings"
 )
 
 func RegisterRoutes(
 	mux *http.ServeMux,
-	//auth
-	// loginUc *authUc.LoginUseCase,
-	// registerUc *authUc.RegisterUseCase,
-	// logoutUc *authUc.LogoutUseCase,
-	// refreshUc *authUc.RefreshTokenUseCase,
-	// changePasswordUc *authUc.ChangePasswordUseCase,
 	//home
 	homeUc *homeUc.GetHomeUseCase,
-	//laporan
-	laporanUc *laporanUc.GetLaporanUseCase,
-	//riwayat
-	riwayatUc *riwayatUc.GetRiwayatUseCase,
-	getParkirDetilUc *riwayatUc.GetParkirDetilUseCase,
-	getTransaksiDetilUc *riwayatUc.GetTransaksiDetilUseCase,
+	//filter_pencarian
+	laporanuc *searchuc.GetLaporanUseCase,
+	riwayatmemberuc *searchuc.GetRiwayatMembershipUseCase,
+	riwayatparkiruc *searchuc.GetRiwayatParkirUseCase,
+	riwayattrxuc *searchuc.GetRiwayatTransaksiUseCase,
+	//invoice
+	invoiceuc *invoiceuc.GetInvoiceUseCase,
+	//payment_gate
+	paymentCallbackUc *paymentgateuc.PaymentCallbackUseCase,
+	getPaymentStatusUc *paymentgateuc.GetPaymentStatusUseCase,
+	payTransferUc *paymentgateuc.PayTransferUseCase,
+	payTopUpUc *paymentgateuc.PayTopUpUseCase,
+	payMembershipUc *paymentgateuc.PayMembershipUseCase,
+	payParkingUc *paymentgateuc.PayParkingUseCase,
+	payCashParkingUc *paymentgateuc.PayCashParkirUseCase,
 	//subscription
 	subscriptionUc *subscriptionUc.SubscriptionUseCase,
 	//payment
@@ -85,9 +82,11 @@ func RegisterRoutes(
 	//helper
 	GetLokasiUc *helperUc.GetLokasiUseCase,
 	GetTarifUc *helperUc.GetTarifUseCase,
-	GetNominalTopUpUc *helperUc.GetNominalTopUpUseCase,
-	//setting
-	// getUserProfileUC *useruc.GetProfileUseCase,
+	GetNominalPaymentUc *helperUc.GetNominalTopUpUseCase,
+	GetPaymentMethodUc *helperUc.GetPaymentMethodUseCase,
+
+	// setting
+	changeProfileUc *settingsuc.ChangeProfileUseCase,
 	//payment
 	// qrUC *qruc.GenerateQRUseCase,
 	// initiatePaymentUC *paymentuc.InitiatePaymentUseCase,
@@ -95,24 +94,22 @@ func RegisterRoutes(
 	q *queue.Queue,
 	logger *log.Logger,
 ) {
-	//core
-	// authLimiter := middleware.NewRateLimiter(10, time.Minute, 5)
-
-	// Handler
-	//auth
-	// loginHandler := authHandler.NewLoginHandler(loginUc)
-	// registerHandler := authHandler.NewRegisterHandler(registerUc)
-	// logoutHandler := authHandler.NewLogoutHandler(logoutUc)
-	// refreshHandler := authHandler.NewRefreshTokenHandler(refreshUc)
-	// changePasswordHandler := authHandler.NewChangePasswordHandler(changePasswordUc)
 	//home
 	homeHandler := homeHandler.NewHomeHandler(homeUc)
-	//riwayat
-	riwayatListHandler := riwayatHandler.NewRiwayatHandler(riwayatUc)
-	parkirDetilHandler := riwayatHandler.NewParkirDetilHandler(getParkirDetilUc)
-	transaksiDetilHandler := riwayatHandler.NewTransaksiDetilHandler(getTransaksiDetilUc)
-	//laporan
-	laporanHandler := laporanHandler.NewLaporanHandler(laporanUc)
+	//filterpencarian
+	searchHandler := searchhandler.NewFilterPencarianHandler(
+		riwayatparkiruc,
+		riwayattrxuc,
+		riwayatmemberuc,
+		laporanuc,
+	)
+	//invoice
+	invoiceHandler := invoicehandler.NewGetInvoiceHandler(invoiceuc)
+	//payment_gate
+	paymentCallbackHandler := paymentgatehandler.NewPaymentCallbackHandler(paymentCallbackUc, getPaymentStatusUc)
+	paymentGateHandler := paymentgatehandler.NewPaymentGateHandler(payTransferUc, payTopUpUc, payMembershipUc, payParkingUc, payCashParkingUc)
+	//settings
+	changeProfileHandler := settingshandler.NewChangeProfileHandler(changeProfileUc)
 	//subscription
 	subscriptionHandler := subscriptionHandler.NewSubscriptionHandler(subscriptionUc)
 	//parking
@@ -127,25 +124,15 @@ func RegisterRoutes(
 	//helper
 	getLokasiHandler := helperHandler.NewGetLocationHandler(GetLokasiUc)
 	getTarifHandler := helperHandler.NewGetTarifHandler(GetTarifUc)
-	getNominalTopUpHandler := helperHandler.NewGetNominalTopUpHandler(GetNominalTopUpUc)
-	// scanHandler := mobile_handler.NewScanHandler(submitQrUC, scanDetailUC)
-	// userHandler := shared_handler.NewUserHandler(getUserProfileUC)
-	// paymentHandler := jukir_handler.NewPaymentHandler(initiatePaymentUC)
-	// qrHandler := mobile_handler.NewQRHandler(qrUC)
-	// authHandler := shared_handler.NewAuthHandler(registerUC, loginUC, refreshUC, logoutUC, changePasswordUC) // Pastikan constructor AuthHandler sudah menerima semua usecase yang diperlukan
+	getNominalPaymentHandler := helperHandler.NewGetNominalTopUpHandler(GetNominalPaymentUc)
+	getPaymentMethodHandler := helperHandler.NewGetPaymentMethodHandler(GetPaymentMethodUc)
 
-	//OtentikasiHandler
-	//auth
-	// protectedLogoutHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(logoutHandler.Logout))                         // jika logout juga butuh otentikasi
-	// protectedChangePasswordHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(changePasswordHandler.ChangePassword)) // Ganti cfg.JWTSecret dengan cara kamu mengakses secret
 	//home
 	protectedHomeHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(homeHandler.GetDashboard))
-	//riwayat
-	protectedRiwayatHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(riwayatListHandler.Execute))
-	protectedParkirDetilHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(parkirDetilHandler.Execute))
-	protectedTransaksiDetilHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(transaksiDetilHandler.Execute))
-	//laporan
-	protectedLaporanHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(laporanHandler.Execute))
+	//search
+	protectedSearchHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(searchHandler.Execute))
+	//invoice
+	protectedInvoiceHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(invoiceHandler.Execute))
 	//subscription
 	protectedSubscriptionHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(subscriptionHandler.Execute))
 	//parking
@@ -157,29 +144,23 @@ func RegisterRoutes(
 	//helper
 	protectedGetLokasiHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(getLokasiHandler.Execute))
 	protectedGetTarifHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(getTarifHandler.Execute))
-	protectedGetNominalTopUpHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(getNominalTopUpHandler.Execute))
-	// protectedProfileHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(userHandler.GetCurrentUser))
-	// protectedQrGenerator := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(qrHandler.GenerateQR))
-	// protectedPaymentHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(paymentHandler.InitiatePayment))
-
-	//Endpoint
-	//auth
-	// mux.HandleFunc("POST /api/v2/linespot/auth/register", registerHandler.Register)
-	// mux.Handle("POST /api/v2/linespot/auth/login", authLimiter.AllowLogin(http.HandlerFunc(loginHandler.Login)))
-	// mux.Handle("POST /api/v2/linespot/auth/refreshToken", authLimiter.AllowRefresh(http.HandlerFunc(refreshHandler.Execute)))
-	// mux.Handle("POST /api/v2/linespot/auth/logout", protectedLogoutHandler)
-	// // mux.Handle("GET /api/v2/linespot/users/me", protectedProfileHandler)
-	// mux.Handle("POST /api/v2/linespot/auth/change-password", protectedChangePasswordHandler)
+	protectedGetNominalPaymentHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(getNominalPaymentHandler.Execute))
+	protectedGetPaymentMethodHandler := middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(getPaymentMethodHandler.Execute))
+	//images
+	fileServer := http.FileServer(http.Dir("D:\\parking_data\\images"))
+	//invoicepdf
+	fileServerInvoice := http.FileServer(http.Dir("D:\\parking_data\\invoice"))
 
 	//home
 	mux.Handle("GET /api/v2/linespot/customer_home", protectedHomeHandler)
 	mux.Handle("GET /api/v2/linespot/jukir_home", protectedHomeHandler)
-	//laporan
-	mux.Handle("POST /api/v2/linespot/laporan", protectedLaporanHandler)
-	//riwayat
-	mux.Handle("POST /api/v2/linespot/riwayat", protectedRiwayatHandler)
-	mux.Handle("GET /api/v2/linespot/riwayat/parkir/{transaction_code}", protectedParkirDetilHandler)
-	mux.Handle("GET /api/v2/linespot/riwayat/transaksi/{topup_code}", protectedTransaksiDetilHandler)
+	//search
+	mux.Handle("POST /api/v2/linespot/search/riwayat_membership", protectedSearchHandler)
+	mux.Handle("POST /api/v2/linespot/search/riwayat_parkir", protectedSearchHandler)
+	mux.Handle("POST /api/v2/linespot/search/riwayat_transaksi", protectedSearchHandler)
+	mux.Handle("POST /api/v2/linespot/search/laporan", protectedSearchHandler)
+	//invoice
+	mux.Handle("GET /api/v2/linespot/invoice/{invoice_number}", protectedInvoiceHandler)
 	//subscription
 	mux.Handle("GET /api/v2/linespot/subscribe", protectedSubscriptionHandler)
 	//parking
@@ -191,13 +172,24 @@ func RegisterRoutes(
 	mux.Handle("POST /api/v2/linespot/topup/create", middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(topupCreateHandler.Execute)))
 	mux.Handle("GET /api/v2/linespot/topup/{topupCode}/status", protectedGetTopUpStatusHandler)
 	mux.Handle("POST /api/v2/linespot/topup/midtrans/callback", http.HandlerFunc(topupCallbackHandler.Execute))
-
 	//helper
 	mux.Handle("GET /api/v2/linespot/get_lokasi", protectedGetLokasiHandler)
 	mux.Handle("GET /api/v2/linespot/get_tarif", protectedGetTarifHandler)
-	mux.Handle("GET /api/v2/linespot/get_topup", protectedGetNominalTopUpHandler)
+	mux.Handle("GET /api/v2/linespot/get_nominal_payment", protectedGetNominalPaymentHandler)
+	mux.Handle("GET /api/v2/linespot/get_payment_method", protectedGetPaymentMethodHandler)
 
-	//route dengan otentikasi (middleware JWT)
-	// mux.Handle("GET /api/v2/linespot/qr/generate", protectedQrGenerator)
-	// mux.Handle("POST /api/v2/linespot/pay", protectedPaymentHandler)
+	//payment_gate callbacks & polling
+	mux.Handle("POST /api/v2/payment/midtrans/callback", http.HandlerFunc(paymentCallbackHandler.HandleCallback))
+	mux.Handle("GET /api/v2/linespot/payment/status/{transaction_code}", middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(paymentCallbackHandler.GetStatus)))
+	mux.Handle("POST /api/v2/linespot/payment/checkout", middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(paymentGateHandler.Execute)))
+
+	//imgaes
+	mux.Handle("GET /images/", http.StripPrefix("/images/", fileServer))
+
+	//invoicepdf
+	mux.Handle("GET /invoice/", http.StripPrefix("/invoice/", fileServerInvoice))
+
+	//settings
+	mux.Handle("PUT /api/v2/linespot/change_profile", middleware.JWTAuth(config.Load().JWTSecret)(http.HandlerFunc(changeProfileHandler.Execute)))
+
 }

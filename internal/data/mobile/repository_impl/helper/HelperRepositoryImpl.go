@@ -159,7 +159,7 @@ func (r *HelperRepositoryImpl) GetTarif(ctx context.Context, userId int64) (*mod
 	return result, nil
 }
 
-func (r *HelperRepositoryImpl) GetTopUp(ctx context.Context) (*model.TopupResponseModel, error) {
+func (r *HelperRepositoryImpl) GetNominalPayment(ctx context.Context) (*model.NominalPaymentModel, error) {
 	rows, err := r.db.QueryContext(
 		ctx,
 		`
@@ -219,8 +219,35 @@ func (r *HelperRepositoryImpl) GetTopUp(ctx context.Context) (*model.TopupRespon
 	}
 	defer rows1.Close()
 
-	items1 := make([]model.MetodeItemModel, 0)
-	for rows1.Next() {
+	result := &model.NominalPaymentModel{
+		Nominal: &items,
+	}
+
+	return result, nil
+}
+
+func (r *HelperRepositoryImpl) GetPaymentMethod(ctx context.Context) (*model.PaymentMethodModel, error) {
+	rows, err := r.db.QueryContext(
+		ctx,
+		`
+		SELECT
+			id AS paymentMethodId,
+			payment_method_code AS paymentMethodCode,
+			payment_method_name AS paymentMethodName,
+			logo_url AS logoUrl
+		FROM master_payment_method
+		WHERE is_active = 1 
+		AND payment_method_code NOT IN ('QRIS', 'CASH', 'MANUAL') -- Tambahkan baris ini
+		ORDER BY id ASC;
+		`,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("Get Metode pembayaran: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]model.MetodeItemModel, 0)
+	for rows.Next() {
 		var (
 			PaymentMethodId int64
 			NamaPayment     sql.NullString
@@ -228,7 +255,7 @@ func (r *HelperRepositoryImpl) GetTopUp(ctx context.Context) (*model.TopupRespon
 			LogoPayment     sql.NullString
 		)
 
-		if err := rows1.Scan(
+		if err := rows.Scan(
 			&PaymentMethodId,
 			&NamaPayment,
 			&CodePayment,
@@ -237,7 +264,7 @@ func (r *HelperRepositoryImpl) GetTopUp(ctx context.Context) (*model.TopupRespon
 			return nil, fmt.Errorf("scan metode pembayaran: %w", err)
 		}
 
-		items1 = append(items1, model.MetodeItemModel{
+		items = append(items, model.MetodeItemModel{
 			PaymentMethodId: PaymentMethodId,
 			NamaPayment:     utils.NullStringValue(NamaPayment),
 			CodePayment:     utils.NullStringValue(CodePayment),
@@ -246,9 +273,8 @@ func (r *HelperRepositoryImpl) GetTopUp(ctx context.Context) (*model.TopupRespon
 
 	}
 
-	result := &model.TopupResponseModel{
-		Nominal:     &items,
-		MetodeBayar: &items1,
+	result := &model.PaymentMethodModel{
+		MetodeBayar: &items,
 	}
 
 	return result, nil

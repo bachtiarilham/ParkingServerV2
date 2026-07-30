@@ -47,6 +47,7 @@ func (h *PostParkingHandler) Execute(w http.ResponseWriter, r *http.Request) {
 		PlateNumber:     req.PlateNumber,
 		VehicleTypeCode: req.VehicleTypeCode,
 		SelectedAreaId:  req.SelectedAreaId,
+		BiayaParkir:     req.BiayaParkir,
 	}
 
 	result, err := h.postParkingUc.Execute(r.Context(), input)

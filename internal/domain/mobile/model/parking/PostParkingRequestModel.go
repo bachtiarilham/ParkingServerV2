@@ -5,4 +5,5 @@ type PostParkingRequestModel struct {
 	PlateNumber     string
 	VehicleTypeCode string
 	SelectedAreaId  int64
+	BiayaParkir     int64
 }

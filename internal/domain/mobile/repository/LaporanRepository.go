@@ -1,11 +1,11 @@
 package repository
 
-import (
-	"context"
+// import (
+// 	"context"
 
-	model "modulegue/internal/domain/mobile/model/laporan"
-)
+// 	model "modulegue/internal/domain/mobile/model/laporan"
+// )
 
-type LaporanRepository interface {
-	GetLaporan(ctx context.Context, filter model.LaporanRequestModel) (*model.LaporanModel, error)
-}
+// type LaporanRepository interface {
+// 	GetLaporan(ctx context.Context, filter model.LaporanRequestModel) (*model.LaporanModel, error)
+// }

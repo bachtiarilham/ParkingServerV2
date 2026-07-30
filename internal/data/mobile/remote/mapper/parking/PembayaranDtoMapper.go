@@ -10,25 +10,11 @@ func ToParkingResponseDto(src *model.PostParkingResponseModel) *dto.PostParkingR
 		return nil
 	}
 	out := &dto.PostParkingResponseDto{
-		SessionId:         src.SessionId,
-		SessionCode:       src.SessionCode,
-		TransactionCode:   src.TransactionCode,
-		PlateNumber:       src.PlateNumber,
-		VehicleTypeCode:   src.VehicleTypeCode,
-		VehicleTypeName:   src.VehicleTypeName,
-		ZoneId:            src.ZoneId,
-		ZoneName:          src.ZoneName,
-		LocationId:        src.LocationId,
-		LocationName:      src.LocationName,
-		Address:           src.Address,
-		AreaId:            src.AreaId,
-		AreaName:          src.AreaName,
-		Amount:            src.Amount,
-		QrString:          src.QrString,
-		QrExpiredAt:       src.QrExpiredAt,
-		PaymentCode:       src.PaymentCode,
-		PaymentStatusCode: src.PaymentStatusCode,
-		PaymentStatusName: src.PaymentStatusName,
+		SessionCode: src.SessionCode,
+		PlateNumber: src.PlateNumber,
+		Waktu:       src.Waktu,
+		QrExpired:   src.QrExpired,
+		BiayaParkir: src.BiayaParkir,
 	}
 	return out
 }
